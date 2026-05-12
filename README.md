@@ -13,36 +13,6 @@ The original repository has not seen updates for over a year and the v9 beta lac
 
 View [Documentation](https://www.material-react-table.com/)
 
-<a href="https://npmjs.com/package/material-react-table" target="_blank">
-  <img alt="" src="https://badgen.net/npm/v/material-react-table?color=blue" />
-</a>
-<a href="https://npmtrends.com/material-react-table" target="_blank">
-  <img alt="" src="https://badgen.net/npm/dt/material-react-table?label=installs&icon=npm&color=blue" />
-</a>
-<a href="https://bundlephobia.com/result?p=material-react-table" target="_blank">
-  <img alt="" src="https://badgen.net/bundlephobia/minzip/material-react-table@latest?color=blue" />
-</a>
-<a href="https://star-history.com/#kevinvandy/material-react-table&Date" target="_blank">
-  <img alt="" src="https://badgen.net/github/stars/KevinVandy/material-react-table?color=blue" />
-</a>
-<a href="https://github.com/KevinVandy/material-react-table/blob/v3/LICENSE" target="_blank">
-  <img alt="" src="https://badgen.net/github/license/KevinVandy/material-react-table?color=blue" />
-</a>
- <a
-  href="https://github.com/sponsors/kevinvandy"
-  target="_blank"
-  rel="noopener"
->
-  <img alt="" src="https://img.shields.io/badge/sponsor-violet" />
-</a>
-<a
-  href="https://discord.gg/5wqyRx6fnm"
-  target="_blank"
-  rel="noopener"
->
-  <img alt="" src="https://dcbadge.vercel.app/api/server/5wqyRx6fnm?style=flat">
-</a>
-
 ## About
 
 ### _Quickly Create React Data Tables with Material Design_
