@@ -1,0 +1,177 @@
+name: CI and Publish
+
+on:
+  push:
+    branches: [ main ]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish to NPM'
+        required: false
+        type: boolean
+        default: false
+      version:
+        description: 'Version tag (if publishing)'
+        required: false
+        type: string
+
+jobs:
+  # First job: Setup, Build and Verify
+  build:
+    name: Build and Verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Validate package.json
+        run: |
+          echo "Validating package.json configuration for @novastera-oss/material-react-table..."
+          PKG_PATH="packages/material-react-table/package.json"
+          
+          # Extract and validate the 'files' field
+          FILES=$(node -p "JSON.stringify(require('./$PKG_PATH').files || [])")
+          echo "Files included in package: $FILES"
+          
+          # Check for required files/directories
+          for REQUIRED in "dist" "src" "package.json" "README.md" "LICENSE"; do
+            if ! echo "$FILES" | grep -q "$REQUIRED"; then
+              echo "⚠️ Warning: '$REQUIRED' might be missing from package.json 'files' field"
+            fi
+          done
+
+      - name: Build the project
+        run: pnpm run lib:build
+      
+      - name: Run Tests
+        run: pnpm run test --if-present
+
+      - name: Prepare Publish Artifacts
+        run: |
+          mkdir -p publish-pkg
+          cp -r packages/material-react-table/dist ./publish-pkg/
+          cp packages/material-react-table/package.json ./publish-pkg/
+          cp packages/material-react-table/README.md ./publish-pkg/
+          cp LICENSE ./publish-pkg/
+          # Copy locales if they were generated/exist
+          if [ -d "packages/material-react-table/locales" ]; then
+            cp -r packages/material-react-table/locales ./publish-pkg/
+          fi
+          # Copy src for sourcemaps if listed in files
+          cp -r packages/material-react-table/src ./publish-pkg/
+
+      - name: Upload Repository State
+        uses: actions/upload-artifact@v7
+        with:
+          name: repo-state
+          path: .
+          retention-days: 1
+
+      - name: Upload Publish Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: publish-artifacts
+          path: publish-pkg
+          retention-days: 1
+  
+  # Publish job - runs on release or manual trigger
+  publish:
+    name: Publish to NPM
+    if: (github.event_name == 'release') || (github.ref == 'refs/heads/main' && github.event.inputs.publish == 'true')
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # Required for OIDC trusted publishing
+      contents: read
+    steps:
+      - name: Download Publish Artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: publish-artifacts
+          path: publish-pkg
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      
+      - name: Extract version from tag, release, or input
+        id: get-version
+        run: |
+          # 1. If triggered by a release, use the release tag
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            VERSION="${{ github.event.release.tag_name }}"
+            # Remove 'v' prefix if present
+            VERSION="${VERSION#v}"
+            echo "Version from release: $VERSION"
+          # 2. Use input version if provided through workflow dispatch
+          elif [[ "${{ github.event.inputs.version }}" != "" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+            echo "Version from input: $VERSION"
+          # 3. Extract version from git tag (remove the 'v' prefix)
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+            echo "Version from tag: $VERSION"
+          # 4. Fallback to package.json version
+          else
+            VERSION=$(node -p "require('./publish-pkg/package.json').version")
+            echo "Version from package.json: $VERSION"
+          fi
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          # Validate semver format (supports pre-releases)
+          SEMVER_REGEX="^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$"
+          if [[ ! "$VERSION" =~ $SEMVER_REGEX ]]; then
+            echo "⚠️ Warning: Version '$VERSION' does not follow semver format"
+          else
+            echo "✅ Version '$VERSION' follows semver format"
+          fi
+      
+      - name: Update version in package.json
+        run: |
+          VERSION=${{ steps.get-version.outputs.version }}
+          echo "Updating version to $VERSION"
+          cd publish-pkg
+          node -e "
+            const pkg = require('./package.json');
+            pkg.version = '$VERSION';
+            require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          echo "✅ Version updated successfully"
+      
+      - name: Verify package content
+        run: |
+          echo "Final check of files to be published..."
+          ls -R publish-pkg
+          
+          if [ ! -d "publish-pkg/dist" ] || [ ! "$(ls -A publish-pkg/dist 2>/dev/null)" ]; then
+            echo "❌ ERROR: Build output (dist) is missing or empty!"
+            exit 1
+          fi
+          echo "✅ Package content verified"
+      
+      - name: Publish to NPM
+        run: |
+          cd publish-pkg
+          pnpm publish --provenance --no-git-checks --access public
