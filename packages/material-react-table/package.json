@@ -41,7 +41,7 @@
     "dev": "vite",
     "lib:build": "pnpm lib:build-lib && pnpm lib:build-locales",
     "lib:build-lib": "rollup -c",
-    "lib:build-locales": "rollup -c rollup.locales.config.mjs",
+    "lib:build-locales": "node build-locales.mjs",
     "lib:dev": "rollup -c -w",
     "lint": "eslint src --ext .ts,.tsx",
     "size": "size-limit",

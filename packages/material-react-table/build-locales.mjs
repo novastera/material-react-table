@@ -51,6 +51,7 @@ async function build(locale) {
       typescript({
         declaration: false,
         declarationDir: undefined,
+        importHelpers: false,
         rootDir: './src',
         sourceMap: false,
       }),

@@ -33,6 +33,7 @@ export default [
     plugins: [
       external(),
       typescript({
+        importHelpers: false,
         rootDir: './src',
       }),
     ],
