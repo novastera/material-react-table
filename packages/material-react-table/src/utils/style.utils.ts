@@ -131,9 +131,9 @@ export const getCommonMRTCellStyles = <TData extends MRT_RowData>({
     widthStyles.flex = `${+(columnDef.grow || 0)} 0 auto`;
   }
 
-  const pinnedStyles = isColumnPinned
+  const pinnedStyles: SxProps<Theme> = isColumnPinned
     ? {
-        ...getCommonPinnedCellStyles({ column, table, theme }),
+        ...(getCommonPinnedCellStyles({ column, table, theme }) as any),
         left:
           isColumnPinned === 'left'
             ? `${column.getStart('left')}px`
@@ -147,38 +147,46 @@ export const getCommonMRTCellStyles = <TData extends MRT_RowData>({
       }
     : {};
 
-  return {
-    backgroundColor: 'inherit',
-    backgroundImage: 'inherit',
-    display: layoutMode?.startsWith('grid') ? 'flex' : undefined,
-    justifyContent:
-      columnDefType === 'group'
-        ? 'center'
-        : layoutMode?.startsWith('grid')
-          ? tableCellProps.align
-          : undefined,
-    opacity:
-      table.getState().draggingColumn?.id === column.id ||
-      table.getState().hoveredColumn?.id === column.id
-        ? 0.5
-        : 1,
-    position: 'relative',
-    transition: enableColumnVirtualization
-      ? 'none'
-      : `padding 150ms ease-in-out`,
-    zIndex:
-      column.getIsResizing() || draggingColumn?.id === column.id
-        ? 2
-        : columnDefType !== 'group' && isColumnPinned
-          ? 1
-          : 0,
-    '&:focus-visible': {
-      outline: `2px solid ${table.options.mrtTheme.cellNavigationOutlineColor}`,
-      outlineOffset: '-2px',
+  return [
+    {
+      backgroundColor: 'inherit',
+      backgroundImage: 'inherit',
+      display: layoutMode?.startsWith('grid') ? 'flex' : undefined,
+      justifyContent:
+        columnDefType === 'group'
+          ? 'center'
+          : layoutMode?.startsWith('grid')
+            ? tableCellProps.align === 'left'
+              ? 'flex-start'
+              : tableCellProps.align === 'right'
+                ? 'flex-end'
+                : tableCellProps.align === 'justify'
+                  ? 'space-between'
+                  : tableCellProps.align
+            : undefined,
+      opacity:
+        table.getState().draggingColumn?.id === column.id ||
+        table.getState().hoveredColumn?.id === column.id
+          ? 0.5
+          : 1,
+      position: 'relative',
+      transition: enableColumnVirtualization
+        ? 'none'
+        : `padding 150ms ease-in-out`,
+      zIndex:
+        column.getIsResizing() || draggingColumn?.id === column.id
+          ? 2
+          : columnDefType !== 'group' && isColumnPinned
+            ? 1
+            : 0,
+      '&:focus-visible': {
+        outline: `2px solid ${table.options.mrtTheme.cellNavigationOutlineColor}`,
+        outlineOffset: '-2px',
+      },
     },
-    ...pinnedStyles,
-    ...widthStyles,
-  };
+    pinnedStyles,
+    widthStyles,
+  ] as SxProps<Theme>;
 };
 
 export const getCommonToolbarStyles = <TData extends MRT_RowData>({

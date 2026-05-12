@@ -606,15 +606,15 @@ export interface MRT_ColumnDef<TData extends MRT_RowData, TValue = unknown>
     column: MRT_Column<TData>;
     rangeFilterIndex?: number;
     table: MRT_TableInstance<TData>;
-  }) => DatePickerProps<any, any>)
-  | DatePickerProps<any, any>;
+  }) => DatePickerProps)
+  | DatePickerProps;
   muiFilterDateTimePickerProps?:
   | ((props: {
     column: MRT_Column<TData>;
     rangeFilterIndex?: number;
     table: MRT_TableInstance<TData>;
-  }) => DateTimePickerProps<any, any>)
-  | DateTimePickerProps<any, any>;
+  }) => DateTimePickerProps)
+  | DateTimePickerProps;
   muiFilterSliderProps?:
   | ((props: {
     column: MRT_Column<TData>;
@@ -633,8 +633,8 @@ export interface MRT_ColumnDef<TData extends MRT_RowData, TValue = unknown>
     column: MRT_Column<TData>;
     rangeFilterIndex?: number;
     table: MRT_TableInstance<TData>;
-  }) => TimePickerProps<any, any>)
-  | TimePickerProps<any, any>;
+  }) => TimePickerProps)
+  | TimePickerProps;
   muiTableBodyCellProps?:
   | ((props: {
     cell: MRT_Cell<TData, TValue>;
@@ -1006,15 +1006,15 @@ export interface MRT_TableOptions<TData extends MRT_RowData>
     column: MRT_Column<TData>;
     rangeFilterIndex?: number;
     table: MRT_TableInstance<TData>;
-  }) => DatePickerProps<any, any>)
-  | DatePickerProps<any, any>;
+  }) => DatePickerProps)
+  | DatePickerProps;
   muiFilterDateTimePickerProps?:
   | ((props: {
     column: MRT_Column<TData>;
     rangeFilterIndex?: number;
     table: MRT_TableInstance<TData>;
-  }) => DateTimePickerProps<any, any>)
-  | DateTimePickerProps<any, any>;
+  }) => DateTimePickerProps)
+  | DateTimePickerProps;
   muiFilterSliderProps?:
   | ((props: {
     column: MRT_Column<TData>;
@@ -1033,8 +1033,8 @@ export interface MRT_TableOptions<TData extends MRT_RowData>
     column: MRT_Column<TData>;
     rangeFilterIndex?: number;
     table: MRT_TableInstance<TData>;
-  }) => TimePickerProps<any, any>)
-  | TimePickerProps<any, any>;
+  }) => TimePickerProps)
+  | TimePickerProps;
   muiLinearProgressProps?:
   | ((props: {
     isTopToolbar: boolean;
