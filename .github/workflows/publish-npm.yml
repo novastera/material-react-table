@@ -1,8 +1,6 @@
 name: CI and Publish
 
 on:
-  push:
-    branches: [ main, v4 ]
   release:
     types: [published]
   workflow_dispatch:
