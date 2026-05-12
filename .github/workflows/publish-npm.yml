@@ -170,6 +170,10 @@ jobs:
           echo "✅ Package content verified"
       
       - name: Publish to NPM
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           cd publish-pkg
-          pnpm publish --provenance --no-git-checks --access public
+          # Setup auth for the token
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+          pnpm publish --no-git-checks --access public
