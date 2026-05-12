@@ -2,6 +2,7 @@ import { type CSSProperties } from 'react';
 import { type TableCellProps } from '@mui/material/TableCell';
 import { type TooltipProps } from '@mui/material/Tooltip';
 import { alpha, darken, lighten } from '@mui/material/styles';
+import { type SxProps } from '@mui/material';
 import { type Theme } from '@mui/material/styles';
 import {
   type MRT_Column,
@@ -58,7 +59,7 @@ export const getCommonPinnedCellStyles = <TData extends MRT_RowData>({
   column?: MRT_Column<TData>;
   table: MRT_TableInstance<TData>;
   theme: Theme;
-}) => {
+}): SxProps<Theme> => {
   const { baseBackgroundColor } = table.options.mrtTheme;
   const isPinned = column?.getIsPinned();
 
@@ -77,8 +78,8 @@ export const getCommonPinnedCellStyles = <TData extends MRT_RowData>({
             ? `-4px 0 4px -4px ${alpha(theme.palette.grey[700], 0.5)} inset`
             : isPinned === 'right' && column.getIsFirstColumn(isPinned)
               ? `4px 0 4px -4px ${alpha(theme.palette.grey[700], 0.5)} inset`
-              : undefined
-          : undefined,
+              : 'none'
+          : 'none',
         ...commonCellBeforeAfterStyles,
       },
     },
@@ -97,7 +98,7 @@ export const getCommonMRTCellStyles = <TData extends MRT_RowData>({
   table: MRT_TableInstance<TData>;
   tableCellProps: TableCellProps;
   theme: Theme;
-}) => {
+}): SxProps<Theme> => {
   const {
     getState,
     options: { enableColumnVirtualization, layoutMode },
@@ -177,7 +178,6 @@ export const getCommonMRTCellStyles = <TData extends MRT_RowData>({
     },
     ...pinnedStyles,
     ...widthStyles,
-    ...(parseFromValuesOrFunc(tableCellProps?.sx, theme) as any),
   };
 };
 
@@ -186,7 +186,7 @@ export const getCommonToolbarStyles = <TData extends MRT_RowData>({
 }: {
   table: MRT_TableInstance<TData>;
   theme: Theme;
-}) => ({
+}): SxProps<Theme> => ({
   alignItems: 'flex-start',
   backgroundColor: table.options.mrtTheme.baseBackgroundColor,
   display: 'grid',

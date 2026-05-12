@@ -33,11 +33,13 @@ export const MRT_ColumnPinningButtons = <TData extends MRT_RowData>({
   return (
     <Box
       {...rest}
-      sx={(theme) => ({
-        minWidth: '70px',
-        textAlign: 'center',
-        ...(parseFromValuesOrFunc(rest?.sx, theme) as any),
-      })}
+      sx={[
+        {
+          minWidth: '70px',
+          textAlign: 'center',
+        },
+        ...(Array.isArray(rest?.sx) ? rest.sx : [rest?.sx]),
+      ]}
     >
       {column.getIsPinned() ? (
         <Tooltip title={localization.unpin}>

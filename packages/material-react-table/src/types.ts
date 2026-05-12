@@ -62,7 +62,16 @@ import { type TableContainerProps } from '@mui/material/TableContainer';
 import { type TableFooterProps } from '@mui/material/TableFooter';
 import { type TableHeadProps } from '@mui/material/TableHead';
 import { type TableRowProps } from '@mui/material/TableRow';
-import { type TextFieldProps } from '@mui/material/TextField';
+import { type TextFieldProps as MuiTextFieldProps } from '@mui/material/TextField';
+
+export type DistributiveOmit<T, K extends keyof any> = T extends any
+  ? Omit<T, K>
+  : never;
+
+export type TextFieldProps = DistributiveOmit<
+  MuiTextFieldProps,
+  'InputProps' | 'inputProps' | 'SelectProps' | 'components' | 'componentsProps'
+>;
 import { type Theme } from '@mui/material/styles';
 import {
   type DatePickerProps,
@@ -597,15 +606,15 @@ export interface MRT_ColumnDef<TData extends MRT_RowData, TValue = unknown>
         column: MRT_Column<TData>;
         rangeFilterIndex?: number;
         table: MRT_TableInstance<TData>;
-      }) => DatePickerProps<never>)
-    | DatePickerProps<never>;
+      }) => DatePickerProps)
+    | DatePickerProps;
   muiFilterDateTimePickerProps?:
     | ((props: {
         column: MRT_Column<TData>;
         rangeFilterIndex?: number;
         table: MRT_TableInstance<TData>;
-      }) => DateTimePickerProps<never>)
-    | DateTimePickerProps<never>;
+      }) => DateTimePickerProps)
+    | DateTimePickerProps;
   muiFilterSliderProps?:
     | ((props: {
         column: MRT_Column<TData>;
@@ -624,8 +633,8 @@ export interface MRT_ColumnDef<TData extends MRT_RowData, TValue = unknown>
         column: MRT_Column<TData>;
         rangeFilterIndex?: number;
         table: MRT_TableInstance<TData>;
-      }) => TimePickerProps<never>)
-    | TimePickerProps<never>;
+      }) => TimePickerProps)
+    | TimePickerProps;
   muiTableBodyCellProps?:
     | ((props: {
         cell: MRT_Cell<TData, TValue>;
@@ -997,15 +1006,15 @@ export interface MRT_TableOptions<TData extends MRT_RowData>
         column: MRT_Column<TData>;
         rangeFilterIndex?: number;
         table: MRT_TableInstance<TData>;
-      }) => DatePickerProps<never>)
-    | DatePickerProps<never>;
+      }) => DatePickerProps)
+    | DatePickerProps;
   muiFilterDateTimePickerProps?:
     | ((props: {
         column: MRT_Column<TData>;
         rangeFilterIndex?: number;
         table: MRT_TableInstance<TData>;
-      }) => DateTimePickerProps<never>)
-    | DateTimePickerProps<never>;
+      }) => DateTimePickerProps)
+    | DateTimePickerProps;
   muiFilterSliderProps?:
     | ((props: {
         column: MRT_Column<TData>;
@@ -1024,8 +1033,8 @@ export interface MRT_TableOptions<TData extends MRT_RowData>
         column: MRT_Column<TData>;
         rangeFilterIndex?: number;
         table: MRT_TableInstance<TData>;
-      }) => TimePickerProps<never>)
-    | TimePickerProps<never>;
+      }) => TimePickerProps)
+    | TimePickerProps;
   muiLinearProgressProps?:
     | ((props: {
         isTopToolbar: boolean;

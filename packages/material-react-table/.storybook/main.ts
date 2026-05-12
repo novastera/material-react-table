@@ -25,11 +25,22 @@ const config: StorybookConfig = {
     name: getAbsolutePath('@storybook/react-vite'),
     options: {},
   },
+  viteFinal: async (config) => {
+    config.resolve = {
+      ...config.resolve,
+      alias: {
+        ...config.resolve?.alias,
+        'storybook/manager-api': getAbsolutePath('@storybook/manager-api'),
+        'storybook/theming': getAbsolutePath('@storybook/theming'),
+      },
+    };
+    return config;
+  },
   docs: {
     autodocs: 'tag',
   },
   typescript: {
-    reactDocgen: 'react-docgen-typescript',
+    reactDocgen: 'react-docgen',
   },
 };
 export default config;

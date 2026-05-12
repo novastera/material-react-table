@@ -136,12 +136,12 @@ const between = <TData extends MRT_RowData>(
   id: string,
   filterValues: [number | string, number | string],
 ): boolean =>
-  ((['', undefined] as any[]).includes(filterValues[0]) ||
+  ((['', undefined] as (string | undefined)[]).includes(filterValues[0]) ||
     greaterThan(row, id, filterValues[0])) &&
   ((!isNaN(+filterValues[0]) &&
     !isNaN(+filterValues[1]) &&
     +filterValues[0] > +filterValues[1]) ||
-    (['', undefined] as any[]).includes(filterValues[1]) ||
+    (['', undefined] as (string | undefined)[]).includes(filterValues[1]) ||
     lessThan(row, id, filterValues[1]));
 
 between.autoRemove = (val: any) => !val;
@@ -151,12 +151,12 @@ const betweenInclusive = <TData extends MRT_RowData>(
   id: string,
   filterValues: [number | string, number | string],
 ): boolean =>
-  ((['', undefined] as any[]).includes(filterValues[0]) ||
+  ((['', undefined] as (string | undefined)[]).includes(filterValues[0]) ||
     greaterThanOrEqualTo(row, id, filterValues[0])) &&
   ((!isNaN(+filterValues[0]) &&
     !isNaN(+filterValues[1]) &&
     +filterValues[0] > +filterValues[1]) ||
-    (['', undefined] as any[]).includes(filterValues[1]) ||
+    (['', undefined] as (string | undefined)[]).includes(filterValues[1]) ||
     lessThanOrEqualTo(row, id, filterValues[1]));
 
 betweenInclusive.autoRemove = (val: any) => !val;

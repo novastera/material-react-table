@@ -86,11 +86,13 @@ export const MRT_EditActionButtons = <TData extends MRT_RowData>({
   return (
     <Box
       onClick={(e) => e.stopPropagation()}
-      sx={(theme) => ({
-        display: 'flex',
-        gap: '0.75rem',
-        ...(parseFromValuesOrFunc(rest?.sx, theme) as any),
-      })}
+      sx={[
+        {
+          display: 'flex',
+          gap: '0.75rem',
+        },
+        ...(Array.isArray(rest?.sx) ? rest.sx : [rest?.sx]),
+      ]}
     >
       {variant === 'icon' ? (
         <>

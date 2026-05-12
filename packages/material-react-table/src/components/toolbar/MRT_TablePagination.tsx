@@ -118,7 +118,7 @@ export const MRT_TablePagination = <TData extends MRT_RowData>({
             }}
             label={localization.rowsPerPage}
             onChange={(event) =>
-              table.setPageSize(+(event.target.value as any))
+              table.setPageSize(Number(event.target.value))
             }
             sx={{ mb: 0 }}
             value={pageSize}
@@ -180,7 +180,7 @@ export const MRT_TablePagination = <TData extends MRT_RowData>({
           }-${lastRowIndex.toLocaleString(localization.language)} ${
             localization.of
           } ${totalRowCount.toLocaleString(localization.language)}`}</Typography>
-          <Box gap="xs">
+          <Box sx={{ gap: '4px', display: 'flex' }}>
             {showFirstButton && (
               <Tooltip {...tooltipProps} title={localization.goToFirstPage}>
                 <span>

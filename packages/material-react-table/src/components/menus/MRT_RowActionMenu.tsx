@@ -67,17 +67,21 @@ export const MRT_RowActionMenu = <TData extends MRT_RowData>({
 
   return (
     <Menu
-      MenuListProps={{
-        dense: density === 'compact',
-        sx: {
-          backgroundColor: menuBackgroundColor,
-        },
-      }}
       anchorEl={anchorEl}
       disableScrollLock
       onClick={(event) => event.stopPropagation()}
       onClose={() => setAnchorEl(null)}
       open={!!anchorEl}
+      slotProps={{
+        list: {
+          dense: density === 'compact',
+          sx: {
+            backgroundColor: menuBackgroundColor,
+          },
+          ...rest.slotProps?.list,
+        },
+        ...rest.slotProps,
+      }}
       {...rest}
     >
       {menuItems}

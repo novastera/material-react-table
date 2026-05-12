@@ -51,25 +51,27 @@ export const MRT_ToolbarDropZone = <TData extends MRT_RowData>({
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         {...rest}
-        sx={(theme) => ({
-          alignItems: 'center',
-          backdropFilter: 'blur(4px)',
-          backgroundColor: alpha(
-            theme.palette.info.main,
-            hoveredColumn?.id === 'drop-zone' ? 0.2 : 0.1,
-          ),
-          border: `dashed ${theme.palette.info.main} 2px`,
-          boxSizing: 'border-box',
-          display: 'flex',
-          height: '100%',
-          justifyContent: 'center',
-          position: 'absolute',
-          width: '100%',
-          zIndex: 4,
-          ...(parseFromValuesOrFunc(rest?.sx, theme) as any),
-        })}
+        sx={[
+          (theme) => ({
+            alignItems: 'center',
+            backdropFilter: 'blur(4px)',
+            backgroundColor: alpha(
+              theme.palette.info.main,
+              hoveredColumn?.id === 'drop-zone' ? 0.2 : 0.1,
+            ),
+            border: `dashed ${theme.palette.info.main} 2px`,
+            boxSizing: 'border-box',
+            display: 'flex',
+            height: '100%',
+            justifyContent: 'center',
+            position: 'absolute',
+            width: '100%',
+            zIndex: 4,
+          }),
+          ...(Array.isArray(rest?.sx) ? rest.sx : [rest?.sx]),
+        ]}
       >
-        <Typography fontStyle="italic">
+        <Typography sx={{ fontStyle: 'italic' }}>
           {localization.dropToGroupBy.replace(
             '{column}',
             draggingColumn?.columnDef?.header ?? '',

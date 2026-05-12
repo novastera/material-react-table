@@ -35,12 +35,14 @@ export const MRT_ToolbarInternalButtons = <TData extends MRT_RowData>({
   return (
     <Box
       {...rest}
-      sx={(theme) => ({
-        alignItems: 'center',
-        display: 'flex',
-        zIndex: 3,
-        ...(parseFromValuesOrFunc(rest?.sx, theme) as any),
-      })}
+      sx={[
+        {
+          alignItems: 'center',
+          display: 'flex',
+          zIndex: 3,
+        },
+        ...(Array.isArray(rest?.sx) ? rest.sx : [rest?.sx]),
+      ]}
     >
       {renderToolbarInternalActions?.({
         table,

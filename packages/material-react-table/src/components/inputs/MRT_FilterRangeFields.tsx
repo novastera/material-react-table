@@ -21,12 +21,14 @@ export const MRT_FilterRangeFields = <TData extends MRT_RowData>({
   return (
     <Box
       {...rest}
-      sx={(theme) => ({
-        display: 'grid',
-        gap: '1rem',
-        gridTemplateColumns: '1fr 1fr',
-        ...(parseFromValuesOrFunc(rest?.sx, theme) as any),
-      })}
+      sx={[
+        {
+          display: 'grid',
+          gap: '1rem',
+          gridTemplateColumns: '1fr 1fr',
+        },
+        ...(Array.isArray(rest?.sx) ? rest.sx : [rest?.sx]),
+      ]}
     >
       {[0, 1].map((rangeFilterIndex) => (
         <MRT_FilterTextField

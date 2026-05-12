@@ -41,21 +41,23 @@ export const MRT_GrabHandleButton = <TData extends MRT_RowData>({
           e.stopPropagation();
           rest?.onClick?.(e);
         }}
-        sx={(theme) => ({
-          '&:active': {
-            cursor: 'grabbing',
+        sx={[
+          {
+            '&:active': {
+              cursor: 'grabbing',
+            },
+            '&:hover': {
+              backgroundColor: 'transparent',
+              opacity: 1,
+            },
+            cursor: 'grab',
+            m: '0 -0.1rem',
+            opacity: location === 'row' ? 1 : 0.5,
+            p: '2px',
+            transition: 'all 150ms ease-in-out',
           },
-          '&:hover': {
-            backgroundColor: 'transparent',
-            opacity: 1,
-          },
-          cursor: 'grab',
-          m: '0 -0.1rem',
-          opacity: location === 'row' ? 1 : 0.5,
-          p: '2px',
-          transition: 'all 150ms ease-in-out',
-          ...(parseFromValuesOrFunc(rest?.sx, theme) as any),
-        })}
+          ...(Array.isArray(rest?.sx) ? rest.sx : [rest?.sx]),
+        ]}
         title={undefined}
       >
         <DragHandleIcon />

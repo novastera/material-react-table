@@ -162,9 +162,11 @@ export const CustomizeSearchTextBox = () => (
     data={data}
     initialState={{ showGlobalFilter: true }}
     muiSearchTextFieldProps={{
-      InputLabelProps: { shrink: true },
       label: 'Search',
       placeholder: 'Search 100 rows',
+      slotProps: {
+        inputLabel: { shrink: true },
+      },
       variant: 'outlined',
     }}
   />

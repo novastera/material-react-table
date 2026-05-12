@@ -32,7 +32,7 @@ import {
   getColumnFilterInfo,
   useDropdownOptions,
 } from '../../utils/column.utils';
-import { getValueAndLabel, parseFromValuesOrFunc } from '../../utils/utils';
+import { getValueAndLabel, parseFromValuesOrFunc, resolveSlotProps } from '../../utils/utils';
 import { MRT_FilterOptionMenu } from '../menus/MRT_FilterOptionMenu';
 
 export interface MRT_FilterTextFieldProps<TData extends MRT_RowData>
@@ -83,17 +83,17 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
   const datePickerProps = {
     ...parseFromValuesOrFunc(muiFilterDatePickerProps, args),
     ...parseFromValuesOrFunc(columnDef.muiFilterDatePickerProps, args),
-  } as any;
+  };
 
   const dateTimePickerProps = {
     ...parseFromValuesOrFunc(muiFilterDateTimePickerProps, args),
     ...parseFromValuesOrFunc(columnDef.muiFilterDateTimePickerProps, args),
-  } as any;
+  };
 
   const timePickerProps = {
     ...parseFromValuesOrFunc(muiFilterTimePickerProps, args),
     ...parseFromValuesOrFunc(columnDef.muiFilterTimePickerProps, args),
-  } as any;
+  };
 
   const {
     allowedColumnFilterOptions,
@@ -153,19 +153,19 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
           : ((column.getFilterValue() as string) ?? ''),
   );
   const [autocompleteValue, setAutocompleteValue] =
-    useState<DropdownOption | null>(() =>
+    useState<DropdownOption | string | null>(() =>
       isAutocompleteFilter
-        ? ((column.getFilterValue() || null) as DropdownOption | null)
+        ? ((column.getFilterValue() || null) as DropdownOption | string | null)
         : null,
     );
 
   const handleChangeDebounced = useCallback(
     debounce(
-      (newValue: any) => {
+      (newValue: unknown) => {
         if (isRangeFilter) {
           column.setFilterValue((old: Array<Date | null | number | string>) => {
             const newFilterValues = old ?? ['', ''];
-            newFilterValues[rangeFilterIndex as number] = newValue ?? undefined;
+            newFilterValues[rangeFilterIndex as number] = (newValue ?? null) as Date | null | number | string;
             return newFilterValues;
           });
         } else {
@@ -177,8 +177,8 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
     [],
   );
 
-  const handleChange = (newValue: any) => {
-    setFilterValue(newValue ?? '');
+  const handleChange = (newValue: unknown) => {
+    setFilterValue((newValue as string) ?? '');
     handleChangeDebounced(newValue);
   };
 
@@ -201,9 +201,13 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
     handleChange(newValue);
   };
 
-  const handleAutocompleteChange = (newValue: DropdownOption | null) => {
+  const handleAutocompleteChange = (newValue: DropdownOption | string | null) => {
     setAutocompleteValue(newValue);
-    handleChangeDebounced(getValueAndLabel(newValue).value);
+    if (typeof newValue === 'string') {
+      handleChangeDebounced(newValue);
+    } else {
+      handleChangeDebounced(getValueAndLabel(newValue).value);
+    }
   };
 
   const handleClear = () => {
@@ -313,7 +317,7 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
     </InputAdornment>
   ) : null;
 
-  const commonTextFieldProps: TextFieldProps<any> = {
+  const commonTextFieldProps: TextFieldProps = {
     fullWidth: true,
     helperText: showChangeModeButton ? (
       <label>
@@ -371,25 +375,29 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
       e.stopPropagation();
       textFieldProps.onKeyDown?.(e);
     },
-    sx: (theme) => ({
-      minWidth: isDateFilter
-        ? '160px'
-        : enableColumnFilterModes && rangeFilterIndex === 0
-          ? '110px'
-          : isRangeFilter
-            ? '100px'
-            : !filterChipLabel
-              ? '120px'
-              : 'auto',
-      mx: '-2px',
-      p: 0,
-      width: 'calc(100% + 4px)',
-      ...(parseFromValuesOrFunc(textFieldProps?.sx, theme) as any),
-    }),
+    sx: [
+      {
+        minWidth: isDateFilter
+          ? '160px'
+          : enableColumnFilterModes && rangeFilterIndex === 0
+            ? '110px'
+            : isRangeFilter
+              ? '100px'
+              : !filterChipLabel
+                ? '120px'
+                : 'auto',
+        mx: '-2px',
+        p: 0,
+        width: 'calc(100% + 4px)',
+      },
+      ...(Array.isArray(textFieldProps?.sx)
+        ? textFieldProps.sx
+        : [textFieldProps?.sx]),
+    ],
   };
 
   const commonDatePickerProps = {
-    onChange: (newDate: any) => {
+    onChange: (newDate: unknown) => {
       handleChange(newDate);
     },
     value: filterValue || null,
@@ -409,7 +417,7 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
               ...timePickerProps?.slotProps?.field,
             },
             textField: {
-              ...commonTextFieldProps,
+              ...(commonTextFieldProps as Record<string, unknown>),
               ...timePickerProps?.slotProps?.textField,
             },
           }}
@@ -426,7 +434,7 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
               ...dateTimePickerProps?.slotProps?.field,
             },
             textField: {
-              ...commonTextFieldProps,
+              ...(commonTextFieldProps as Record<string, unknown>),
               ...dateTimePickerProps?.slotProps?.textField,
             },
           }}
@@ -443,7 +451,7 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
               ...datePickerProps?.slotProps?.field,
             },
             textField: {
-              ...commonTextFieldProps,
+              ...(commonTextFieldProps as Record<string, unknown>),
               ...datePickerProps?.slotProps?.textField,
             },
           }}
@@ -451,11 +459,12 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
       ) : isAutocompleteFilter ? (
         <Autocomplete
           freeSolo
-          getOptionLabel={(option: DropdownOption) =>
-            getValueAndLabel(option).label
-          }
+          getOptionLabel={(option: DropdownOption | string) => {
+            if (typeof option === 'string') return option;
+            return getValueAndLabel(option).label;
+          }}
           onChange={(_e, newValue) =>
-            handleAutocompleteChange(newValue as DropdownOption | null)
+            handleAutocompleteChange(newValue as DropdownOption | string | null)
           }
           options={
             dropdownOptions?.map((option) => getValueAndLabel(option)) ?? []
@@ -470,17 +479,31 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
               slotProps={{
                 ...builtinTextFieldProps.slotProps,
                 ...commonTextFieldProps.slotProps,
-                input: {
-                  ...builtinTextFieldProps.InputProps,
-                  ...builtinTextFieldProps.slotProps?.input,
-                  startAdornment:
-                    //@ts-expect-error
-                    commonTextFieldProps?.slotProps?.input?.startAdornment,
+                input: (ownerState: any) => {
+                  const builtinInput = resolveSlotProps(
+                    builtinTextFieldProps.slotProps?.input,
+                    null,
+                    ownerState,
+                  );
+                  const commonInput = resolveSlotProps(
+                    commonTextFieldProps.slotProps?.input,
+                    null,
+                    ownerState,
+                  );
+                  return resolveSlotProps(commonInput, builtinInput, ownerState);
                 },
-                htmlInput: {
-                  ...builtinTextFieldProps.inputProps,
-                  ...builtinTextFieldProps.slotProps?.htmlInput,
-                  ...commonTextFieldProps?.slotProps?.htmlInput,
+                htmlInput: (ownerState: any) => {
+                  const builtinHtmlInput = resolveSlotProps(
+                    builtinTextFieldProps.slotProps?.htmlInput,
+                    null,
+                    ownerState,
+                  );
+                  const commonHtmlInput = resolveSlotProps(
+                    commonTextFieldProps.slotProps?.htmlInput,
+                    null,
+                    ownerState,
+                  );
+                  return resolveSlotProps(commonHtmlInput, builtinHtmlInput, ownerState);
                 },
               }}
               onClick={(e: MouseEvent<HTMLInputElement>) => e.stopPropagation()}
@@ -496,14 +519,14 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
             ...commonTextFieldProps.slotProps,
             inputLabel: {
               shrink: isSelectFilter || isMultiSelectFilter,
-              ...(commonTextFieldProps.slotProps?.inputLabel as any),
+              ...commonTextFieldProps.slotProps?.inputLabel,
             },
             select: {
               MenuProps: { disableScrollLock: true },
               displayEmpty: true,
               multiple: isMultiSelectFilter,
               renderValue: isMultiSelectFilter
-                ? (selected: any) =>
+                ? (selected: unknown) =>
                     !Array.isArray(selected) || selected?.length === 0 ? (
                       <Box sx={{ opacity: 0.5 }}>{filterPlaceholder}</Box>
                     ) : (

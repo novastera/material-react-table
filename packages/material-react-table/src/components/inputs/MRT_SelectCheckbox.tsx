@@ -1,4 +1,4 @@
-import { type MouseEvent } from 'react';
+import { type ChangeEvent, type MouseEvent } from 'react';
 import Checkbox, { type CheckboxProps } from '@mui/material/Checkbox';
 import Radio, { type RadioProps } from '@mui/material/Radio';
 import Tooltip from '@mui/material/Tooltip';
@@ -86,7 +86,7 @@ export const MRT_SelectCheckbox = <TData extends MRT_RowData>({
         ? localization.toggleSelectAll
         : localization.toggleSelectRow,
     },
-    onChange: (event) => {
+    onChange: (event: ChangeEvent<HTMLInputElement>) => {
       event.stopPropagation();
       selectAll ? onSelectAllChange(event) : onSelectionChange!(event);
     },
@@ -104,7 +104,7 @@ export const MRT_SelectCheckbox = <TData extends MRT_RowData>({
       ...parseFromValuesOrFunc(checkboxProps?.sx, theme),
     }),
     title: undefined,
-  } as CheckboxProps | RadioProps;
+  } as unknown as CheckboxProps | RadioProps;
 
   return (
     <Tooltip
