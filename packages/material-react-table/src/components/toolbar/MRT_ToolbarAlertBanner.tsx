@@ -113,7 +113,7 @@ export const MRT_ToolbarAlertBanner = <TData extends MRT_RowData>({
         icon={false}
         {...alertProps}
         sx={[
-          (theme) => ({
+          () => ({
             '& .MuiAlert-message': {
               maxWidth: `calc(${
                 tablePaperRef.current?.clientWidth ?? 360

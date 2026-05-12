@@ -76,7 +76,7 @@ export const MRT_TableHeadCellResizeHandle = <TData extends MRT_RowData>({
         flexItem
         orientation="vertical"
         sx={[
-          (theme) => ({
+          () => ({
             borderRadius: '2px',
             borderWidth: '2px',
             height: '24px',

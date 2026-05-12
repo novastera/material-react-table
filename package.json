@@ -27,7 +27,7 @@
   "engines": {
     "node": ">=16.0.0"
   },
-  "packageManager": "pnpm@9.3.0",
+  "packageManager": "pnpm@11.1.1",
   "pnpm": {
     "overrides": {
       "@storybook/react": "10.3.6",
@@ -44,6 +44,12 @@
         "vite": "^8.0.0",
         "typescript": "^6.0.0"
       }
-    }
+    },
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "@rolldown/binding-win32-x64-msvc",
+      "@rolldown/binding-linux-x64-gnu",
+      "@rolldown/binding-darwin-arm64"
+    ]
   }
 }

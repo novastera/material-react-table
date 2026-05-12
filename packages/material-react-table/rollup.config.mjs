@@ -39,7 +39,7 @@ export default [
   },
   {
     input: './dist/types/index.d.ts',
-    output: [{ file: `./${pkg.typings}`, format: 'esm' }],
+    output: [{ file: `./${pkg.types}`, format: 'esm' }],
     plugins: [
       del({
         hook: 'buildEnd',

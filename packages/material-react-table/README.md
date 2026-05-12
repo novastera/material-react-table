@@ -32,7 +32,23 @@ View [Documentation](https://www.material-react-table.com/)
   <img alt="" src="https://dcbadge.vercel.app/api/server/5wqyRx6fnm?style=flat">
 </a>
 
+## About Novastera
+
+**Material React Table V4** is maintained by **Novastera** as part of our commitment to the open-source community. This fork was established to ensure that one of the React table libraries remains compatible with the latest versions of Material UI and receives the active maintenance it deserves.
+
+We step in where others stall—providing stability, modern dependency support, and a reliable path forward for production applications.
+
+Learn more: [https://novastera.com/resources](https://novastera.com/resources)
+
 ## About
+
+### About Novastera
+
+**Material React Table V4** is maintained by **Novastera** as part of our commitment to the open-source community. This fork was established to ensure that one of the React table libraries remains compatible with the latest versions of Material UI and receives the active maintenance it deserves.
+
+We step in where others stall—providing stability, modern dependency support, and a reliable path forward for production applications.
+
+Learn more: [https://novastera.com/resources](https://novastera.com/resources)
 
 ### _Quickly Create React Data Tables with Material Design_
 
