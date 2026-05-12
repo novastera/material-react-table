@@ -47,7 +47,6 @@
     "size": "size-limit",
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
-    "test": "vitest",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {

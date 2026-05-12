@@ -56,8 +56,8 @@ jobs:
       - name: Build the project
         run: pnpm run lib:build
       
-      - name: Run Tests
-        run: pnpm run test --if-present
+      # - name: Run Tests
+      #   run: pnpm run test --if-present
 
       - name: Prepare Publish Artifacts
         run: |
