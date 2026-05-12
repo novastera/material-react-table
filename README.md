@@ -1,3 +1,14 @@
+# Material React Table V4
+
+This is a fork of [Material React Table](https://www.material-react-table.com/). It was created to provide maintenance and update dependencies to the latest standards, including support for:
+- Material UI v9
+- React 19 (Optimized: No `forwardRef`, internal performance stability)
+- Vite 8 & Rollup 4
+- ESLint 10
+- TypeScript 6 (Zero runtime helpers)
+
+The original repository has not seen updates for over a year and the v9 beta lacked progress. This version ensures the library remains usable in modern development stacks.
+
 # Material React Table V3
 
 View [Documentation](https://www.material-react-table.com/)
@@ -36,7 +47,7 @@ View [Documentation](https://www.material-react-table.com/)
 
 ### _Quickly Create React Data Tables with Material Design_
 
-### **Built with [Material UI <sup>V6</sup>](https://mui.com) and [TanStack Table <sup>V8</sup>](https://tanstack.com/table/v8)**
+### **Built with [Material UI <sup>V9</sup>](https://mui.com) and [TanStack Table <sup>V8</sup>](https://tanstack.com/table/v8)**
 
 <img src="https://material-react-table.com/banner.png" alt="MRT" height="50" />
 
@@ -114,9 +125,9 @@ _**Fully Fleshed out [Docs](https://www.material-react-table.com/docs/guides#gui
 
 View the full [Installation Docs](https://www.material-react-table.com/docs/getting-started/install)
 
-1. Ensure that you have React 18 or later installed
+1. Ensure that you have React 19 or later installed
 
-2. Install Peer Dependencies (Material UI V6)
+2. Install Peer Dependencies (Material UI V9)
 
 ```bash
 npm install @mui/material @mui/x-date-pickers @mui/icons-material @emotion/react @emotion/styled
@@ -213,3 +224,10 @@ PRs are Welcome, but please discuss in [GitHub Discussions](https://github.com/K
 Read the [Contributing Guide](https://github.com/KevinVandy/material-react-table/blob/v3/CONTRIBUTING.md) to learn how to run this project locally.
 
 <!-- Use the FORCE, Luke! -->
+## About Novastera
+
+**Material React Table V4** is maintained by **Novastera** as part of our commitment to the open-source community. This fork was established to ensure that one of the React table libraries remains compatible with the latest versions of Material UI and receives the active maintenance it deserves.
+
+We step in where others stall—providing stability, modern dependency support, and a reliable path forward for production applications.
+
+Learn more: [https://novastera.com/resources](https://novastera.com/resources)

@@ -1,19 +1,14 @@
 {
-  "name": "material-react-table-turbo",
+  "name": "@novastera-oss/material-react-table-root",
+  "author": "Novastera",
   "private": true,
   "workspaces": [
-    "apps/*",
     "packages/*"
   ],
   "scripts": {
     "build": "turbo run build --parallel",
     "dev": "turbo run dev --parallel",
-    "docs:build": "turbo run docs:build --no-cache --force",
-    "docs:build-local": "turbo run docs:build --no-cache --force",
-    "docs:dev": "turbo run docs:dev",
-    "docs:sitemap": "turbo run docs:sitemap",
-    "docs:start": "turbo run docs:start",
-    "lib:build": "cp README.md packages/material-react-table/README.md && turbo run lib:build",
+    "lib:build": "rimraf packages/material-react-table/README.md && cp README.md packages/material-react-table/README.md && turbo run lib:build",
     "lib:build-locales": "turbo run lib:build-locales",
     "lib:build-lib": "turbo run lib:build-lib",
     "lib:dev": "turbo run lib:dev",
@@ -26,7 +21,8 @@
   },
   "devDependencies": {
     "prettier": "^3.4.2",
-    "turbo": "2.3.3"
+    "rimraf": "^6.1.3",
+    "turbo": "2.9.12"
   },
   "engines": {
     "node": ">=16.0.0"
