@@ -8,7 +8,6 @@ import {
   type MRT_RowData,
   type MRT_TableInstance,
 } from '../../types';
-import { parseFromValuesOrFunc } from '../../utils/utils';
 
 export interface MRT_EditActionButtonsProps<TData extends MRT_RowData>
   extends BoxProps {
@@ -103,17 +102,17 @@ export const MRT_EditActionButtons = <TData extends MRT_RowData>({
           </Tooltip>
           {((isCreating && onCreatingRowSave) ||
             (isEditing && onEditingRowSave)) && (
-            <Tooltip title={localization.save}>
-              <IconButton
-                aria-label={localization.save}
-                color="info"
-                disabled={isSaving}
-                onClick={handleSubmitRow}
-              >
-                {isSaving ? <CircularProgress size={18} /> : <SaveIcon />}
-              </IconButton>
-            </Tooltip>
-          )}
+              <Tooltip title={localization.save}>
+                <IconButton
+                  aria-label={localization.save}
+                  color="info"
+                  disabled={isSaving}
+                  onClick={handleSubmitRow}
+                >
+                  {isSaving ? <CircularProgress size={18} /> : <SaveIcon />}
+                </IconButton>
+              </Tooltip>
+            )}
         </>
       ) : (
         <>

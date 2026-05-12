@@ -18,7 +18,6 @@ import {
 } from '../../types';
 import { reorderColumn } from '../../utils/column.utils';
 import { getCommonTooltipProps } from '../../utils/style.utils';
-import { parseFromValuesOrFunc } from '../../utils/utils';
 import { MRT_ColumnPinningButtons } from '../buttons/MRT_ColumnPinningButtons';
 import { MRT_GrabHandleButton } from '../buttons/MRT_GrabHandleButton';
 

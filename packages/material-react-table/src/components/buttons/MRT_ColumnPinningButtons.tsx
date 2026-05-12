@@ -6,7 +6,6 @@ import {
   type MRT_RowData,
   type MRT_TableInstance,
 } from '../../types';
-import { parseFromValuesOrFunc } from '../../utils/utils';
 
 export interface MRT_ColumnPinningButtonsProps<TData extends MRT_RowData>
   extends BoxProps {

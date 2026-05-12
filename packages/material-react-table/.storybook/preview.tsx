@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { addons } from '@storybook/preview-api';
+import { addons } from 'storybook/preview-api';
 import { Preview } from '@storybook/react';
 import { useDarkMode, DARK_MODE_EVENT_NAME } from 'storybook-dark-mode';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
@@ -38,11 +38,17 @@ const preview: Preview = {
         const sbRoot = document.getElementsByClassName(
           'sb-show-main',
         )[0] as HTMLElement;
-        channel.on(DARK_MODE_EVENT_NAME, setDark);
+        if (channel) {
+          channel.on(DARK_MODE_EVENT_NAME, setDark);
+        }
         if (sbRoot) {
           sbRoot.style.backgroundColor = theme.palette.background.default;
         }
-        return () => channel.off(DARK_MODE_EVENT_NAME, setDark);
+        return () => {
+          if (channel) {
+            channel.off(DARK_MODE_EVENT_NAME, setDark);
+          }
+        };
       }, [theme]);
 
       useEffect(() => {

@@ -5,7 +5,6 @@ import {
   type MRT_RowData,
   type MRT_TableInstance,
 } from '../../types';
-import { parseFromValuesOrFunc } from '../../utils/utils';
 
 export interface MRT_TableHeadCellResizeHandleProps<TData extends MRT_RowData>
   extends DividerProps {
@@ -52,10 +51,9 @@ export const MRT_TableHeadCellResizeHandle = <TData extends MRT_RowData>({
       style={{
         transform:
           column.getIsResizing() && columnResizeMode === 'onEnd'
-            ? `translateX(${
-                (columnResizeDirection === 'rtl' ? -1 : 1) *
-                (getState().columnSizingInfo.deltaOffset ?? 0)
-              }px)`
+            ? `translateX(${(columnResizeDirection === 'rtl' ? -1 : 1) *
+            (getState().columnSizingInfo.deltaOffset ?? 0)
+            }px)`
             : undefined,
       }}
       sx={(theme) => ({
