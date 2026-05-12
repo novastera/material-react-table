@@ -27,9 +27,9 @@
       "require": "./dist/index.cjs"
     },
     "./locales/*": {
-      "types": "./dist/locales/*.d.ts",
-      "import": "./dist/locales/*.js",
-      "require": "./dist/locales/*.cjs"
+      "types": "./locales/*/index.d.ts",
+      "import": "./locales/*/index.esm.js",
+      "require": "./locales/*/index.js"
     }
   },
   "files": [
