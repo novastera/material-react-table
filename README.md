@@ -2,7 +2,7 @@
 
 This is a fork of [Material React Table](https://www.material-react-table.com/). It was created to provide maintenance and update dependencies to the latest standards, including support for:
 - Material UI v9
-- React 19 (Optimized: No `forwardRef`, internal performance stability)
+- React 19
 - Vite 8 & Rollup 4
 - ESLint 10
 - TypeScript 6 (Zero runtime helpers)
@@ -196,8 +196,10 @@ Read the [Contributing Guide](https://github.com/KevinVandy/material-react-table
 <!-- Use the FORCE, Luke! -->
 ## About Novastera
 
-**Material React Table V4** is maintained by **Novastera** as part of our commitment to the open-source community. This fork was established to ensure that one of the React table libraries remains compatible with the latest versions of Material UI and receives the active maintenance it deserves.
+**Material React Table V4** is a humble fork maintained by **Novastera**. We transitioned this project to **Material UI v9** to ensure it remains compatible with the latest modern stacks.
 
-We step in where others stall—providing stability, modern dependency support, and a reliable path forward for production applications.
+Please keep in mind that while we've made these updates, we aren't able to commit a lot of time to active maintenance or support. We're sharing this version "as is"—you are more than welcome to use it as a reference or take inspiration for your own forks. Don't expect regular updates or follow-ups, but we hope this provides a nice starting point for anyone moving to MUI v9.
+
+Enjoy!
 
 Learn more: [https://novastera.com/resources](https://novastera.com/resources)
