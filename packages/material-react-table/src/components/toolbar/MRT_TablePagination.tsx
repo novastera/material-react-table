@@ -65,7 +65,11 @@ export const MRT_TablePagination = <TData extends MRT_RowData>({
   const lastRowIndex = Math.min(pageIndex * pageSize + pageSize, totalRowCount);
 
   const {
-    SelectProps = {},
+    SelectProps: {
+      inputProps: muiInputProps,
+      slotProps: muiSlotProps,
+      ...SelectProps
+    } = {} as any,
     disabled = false,
     rowsPerPageOptions = defaultRowsPerPage,
     showFirstButton = showFirstLastPageButtons,
@@ -112,9 +116,14 @@ export const MRT_TablePagination = <TData extends MRT_RowData>({
             MenuProps={{ disableScrollLock: true }}
             disableUnderline
             disabled={disabled}
-            inputProps={{
-              'aria-label': localization.rowsPerPage,
-              id: `mrt-rows-per-page-${id}`,
+            slotProps={{
+              ...muiSlotProps,
+              input: {
+                'aria-label': localization.rowsPerPage,
+                id: `mrt-rows-per-page-${id}`,
+                ...muiInputProps,
+                ...muiSlotProps?.input,
+              },
             }}
             label={localization.rowsPerPage}
             onChange={(event) =>

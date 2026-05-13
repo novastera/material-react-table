@@ -44,7 +44,12 @@ export const MRT_EditCellTextField = <TData extends MRT_RowData>({
   const [value, setValue] = useState(() => cell.getValue<string>());
   const [completesComposition, setCompletesComposition] = useState(true);
 
-  const textFieldProps: TextFieldProps = {
+  const {
+    InputProps: muiInputProps,
+    inputProps: muiHtmlInputProps,
+    slotProps: muiSlotProps,
+    ...textFieldProps
+  } = {
     ...parseFromValuesOrFunc(muiEditTextFieldProps, {
       cell,
       column,
@@ -58,7 +63,7 @@ export const MRT_EditCellTextField = <TData extends MRT_RowData>({
       table,
     }),
     ...rest,
-  };
+  } as any;
 
   const selectOptions = parseFromValuesOrFunc(editSelectOptions, {
     cell,
@@ -67,7 +72,7 @@ export const MRT_EditCellTextField = <TData extends MRT_RowData>({
     table,
   });
 
-  const isSelectEdit = editVariant === 'select' || textFieldProps?.select;
+  const isSelectEdit = editVariant === 'select' || (textFieldProps as any)?.select;
 
   const saveInputValueToRowCache = (newValue: string) => {
     //@ts-expect-error
@@ -80,7 +85,7 @@ export const MRT_EditCellTextField = <TData extends MRT_RowData>({
   };
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    textFieldProps.onChange?.(event);
+    (textFieldProps as any).onChange?.(event);
     setValue(event.target.value);
     if (isSelectEdit) {
       saveInputValueToRowCache(event.target.value);
@@ -88,13 +93,13 @@ export const MRT_EditCellTextField = <TData extends MRT_RowData>({
   };
 
   const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
-    textFieldProps.onBlur?.(event);
+    (textFieldProps as any).onBlur?.(event);
     saveInputValueToRowCache(value);
     setEditingCell(null);
   };
 
   const handleEnterKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    textFieldProps.onKeyDown?.(event);
+    (textFieldProps as any).onKeyDown?.(event);
     if (event.key === 'Enter' && !event.shiftKey && completesComposition) {
       editInputRefs.current?.[column.id]?.blur();
     }
@@ -106,6 +111,7 @@ export const MRT_EditCellTextField = <TData extends MRT_RowData>({
 
   return (
     <TextField
+      autoFocus={editDisplayMode === 'table'}
       disabled={parseFromValuesOrFunc(columnDef.enableEditing, row) === false}
       fullWidth
       inputRef={(inputRef) => {
@@ -113,9 +119,6 @@ export const MRT_EditCellTextField = <TData extends MRT_RowData>({
           editInputRefs.current![column.id] = isSelectEdit
             ? inputRef.node
             : inputRef;
-          if (textFieldProps.inputRef) {
-            textFieldProps.inputRef = inputRef;
-          }
         }
       }}
       label={
@@ -127,31 +130,28 @@ export const MRT_EditCellTextField = <TData extends MRT_RowData>({
       }
       margin="none"
       name={column.id}
-      placeholder={
-        !['custom', 'modal'].includes(
-          (isCreating ? createDisplayMode : editDisplayMode) as string,
-        )
-          ? columnDef.header
-          : undefined
-      }
+      placeholder={columnDef.header}
       select={isSelectEdit}
       size="small"
       value={value ?? ''}
       variant="standard"
       {...textFieldProps}
       slotProps={{
-        ...textFieldProps.slotProps,
+        ...muiSlotProps,
         input: (ownerState: any) =>
           resolveSlotProps(
-            textFieldProps.slotProps?.input,
-            textFieldProps.variant !== 'outlined'
-              ? { disableUnderline: editDisplayMode === 'table' }
-              : null,
+            muiSlotProps?.input,
+            {
+              ...(textFieldProps.variant !== 'outlined'
+                ? { disableUnderline: editDisplayMode === 'table' }
+                : null),
+              ...muiInputProps,
+            },
             ownerState,
           ),
         select: (ownerState: any) =>
           resolveSlotProps(
-            textFieldProps.slotProps?.select,
+            muiSlotProps?.select,
             { MenuProps: { disableScrollLock: true } },
             ownerState,
           ),

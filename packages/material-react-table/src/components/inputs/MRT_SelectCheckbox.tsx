@@ -53,23 +53,24 @@ export const MRT_SelectCheckbox = <TData extends MRT_RowData>({
     ? allRowsSelected
     : getIsRowSelected({ row, table });
 
-  const checkboxProps = {
-    ...(selectAll
-      ? parseFromValuesOrFunc(muiSelectAllCheckboxProps, { table })
-      : parseFromValuesOrFunc(muiSelectCheckboxProps, {
-          row,
-          staticRowIndex,
-          table,
-        })),
-    ...rest,
-  };
+  const {
+    inputProps: muiInputProps,
+    slotProps: muiSlotProps,
+    ...checkboxProps
+  } = ((selectAll
+    ? parseFromValuesOrFunc(muiSelectAllCheckboxProps, { table })
+    : parseFromValuesOrFunc(muiSelectCheckboxProps, {
+      row,
+      staticRowIndex,
+      table,
+    })) ?? {}) as any;
 
   const onSelectionChange = row
     ? getMRT_RowSelectionHandler({
-        row,
-        staticRowIndex,
-        table,
-      })
+      row,
+      staticRowIndex,
+      table,
+    })
     : undefined;
 
   const onSelectAllChange = getMRT_SelectAllHandler({ table });
@@ -82,10 +83,13 @@ export const MRT_SelectCheckbox = <TData extends MRT_RowData>({
     disabled:
       isLoading || (row && !row.getCanSelect()) || row?.id === 'mrt-row-create',
     slotProps: {
-      htmlInput: {
+      ...muiSlotProps,
+      input: {
         'aria-label': selectAll
           ? localization.toggleSelectAll
           : localization.toggleSelectRow,
+        ...muiInputProps,
+        ...muiSlotProps?.input,
       },
     },
     onChange: (event: ChangeEvent<HTMLInputElement>) => {
@@ -94,16 +98,19 @@ export const MRT_SelectCheckbox = <TData extends MRT_RowData>({
     },
     size: (density === 'compact' ? 'small' : 'medium') as 'medium' | 'small',
     ...checkboxProps,
+    ...rest,
     onClick: (e: MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation();
-      checkboxProps?.onClick?.(e);
+      (checkboxProps as any)?.onClick?.(e);
+      rest?.onClick?.(e);
     },
     sx: (theme: Theme) => ({
       height: density === 'compact' ? '1.75rem' : '2.5rem',
       m: density !== 'compact' ? '-0.4rem' : undefined,
       width: density === 'compact' ? '1.75rem' : '2.5rem',
       zIndex: 0,
-      ...parseFromValuesOrFunc(checkboxProps?.sx, theme),
+      ...parseFromValuesOrFunc((checkboxProps as any)?.sx, theme),
+      ...parseFromValuesOrFunc(rest?.sx, theme),
     }),
     title: undefined,
   } as unknown as CheckboxProps | RadioProps;

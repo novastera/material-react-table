@@ -39,12 +39,17 @@ export const MRT_GlobalFilterTextField = <TData extends MRT_RowData>({
   } = table;
   const { globalFilter, showGlobalFilter } = getState();
 
-  const textFieldProps = {
+  const {
+    InputProps: muiInputProps,
+    inputProps: muiHtmlInputProps,
+    slotProps: muiSlotProps,
+    ...textFieldProps
+  } = {
     ...parseFromValuesOrFunc(muiSearchTextFieldProps, {
       table,
     }),
     ...rest,
-  };
+  } as any;
 
   const isMounted = useRef(false);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
@@ -63,6 +68,7 @@ export const MRT_GlobalFilterTextField = <TData extends MRT_RowData>({
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     setSearchValue(event.target.value);
     handleChangeDebounced(event);
+    (textFieldProps as any)?.onChange?.(event);
   };
 
   const handleGlobalFilterMenuOpen = (event: MouseEvent<HTMLElement>) => {
@@ -76,38 +82,30 @@ export const MRT_GlobalFilterTextField = <TData extends MRT_RowData>({
 
   useEffect(() => {
     if (isMounted.current) {
-      if (globalFilter === undefined) {
-        handleClear();
-      } else {
-        setSearchValue(globalFilter);
-      }
+      setSearchValue(globalFilter ?? '');
     }
     isMounted.current = true;
   }, [globalFilter]);
 
   return (
-    <Collapse
-      in={showGlobalFilter}
-      mountOnEnter
-      orientation="horizontal"
-      unmountOnExit
-    >
+    <Collapse in={showGlobalFilter} orientation="horizontal">
       <TextField
+        fullWidth
+        margin="none"
         placeholder={localization.search}
-        size="small"
-        variant="outlined"
+        variant="standard"
         {...textFieldProps}
         slotProps={{
-          ...textFieldProps.slotProps,
+          ...muiSlotProps,
           htmlInput: (ownerState: any) =>
             resolveSlotProps(
-              textFieldProps.slotProps?.htmlInput,
-              { autoComplete: 'off' },
+              muiSlotProps?.htmlInput,
+              { autoComplete: 'off', ...muiHtmlInputProps },
               ownerState,
             ),
           input: (ownerState: any) =>
             resolveSlotProps(
-              textFieldProps.slotProps?.input,
+              muiSlotProps?.input,
               {
                 endAdornment: (
                   <InputAdornment position="end">
@@ -142,14 +140,15 @@ export const MRT_GlobalFilterTextField = <TData extends MRT_RowData>({
                   <SearchIcon style={{ marginRight: '4px' }} />
                 ),
                 sx: { mb: 0 },
+                ...muiInputProps,
               },
               ownerState,
             ),
         }}
         inputRef={(inputRef) => {
           searchInputRef.current = inputRef;
-          if (textFieldProps?.inputRef) {
-            textFieldProps.inputRef = inputRef;
+          if ((textFieldProps as any)?.inputRef) {
+            (textFieldProps as any).inputRef = inputRef;
           }
         }}
         onChange={handleChange}

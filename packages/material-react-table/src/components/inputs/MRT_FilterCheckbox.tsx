@@ -27,7 +27,11 @@ export const MRT_FilterCheckbox = <TData extends MRT_RowData>({
   const { density } = getState();
   const { columnDef } = column;
 
-  const checkboxProps = {
+  const {
+    inputProps: muiInputProps,
+    slotProps: muiSlotProps,
+    ...checkboxProps
+  } = {
     ...parseFromValuesOrFunc(muiFilterCheckboxProps, {
       column,
       table,
@@ -36,8 +40,7 @@ export const MRT_FilterCheckbox = <TData extends MRT_RowData>({
       column,
       table,
     }),
-    ...rest,
-  };
+  } as any;
 
   const filterLabel = localization.filterByColumn?.replace(
     '{column}',
@@ -58,7 +61,16 @@ export const MRT_FilterCheckbox = <TData extends MRT_RowData>({
             }
             indeterminate={column.getFilterValue() === undefined}
             size={density === 'compact' ? 'small' : 'medium'}
+            slotProps={{
+              ...muiSlotProps,
+              input: {
+                'aria-label': filterLabel,
+                ...muiInputProps,
+                ...muiSlotProps?.input,
+              },
+            }}
             {...checkboxProps}
+            {...rest}
             onChange={(e, checked) => {
               column.setFilterValue(
                 column.getFilterValue() === undefined
@@ -67,20 +79,21 @@ export const MRT_FilterCheckbox = <TData extends MRT_RowData>({
                     ? 'false'
                     : undefined,
               );
-              checkboxProps?.onChange?.(e, checked);
+              (checkboxProps as any)?.onChange?.(e, checked);
+              rest?.onChange?.(e, checked);
             }}
             onClick={(e) => {
               e.stopPropagation();
-              checkboxProps?.onClick?.(e);
+              (checkboxProps as any)?.onClick?.(e);
+              rest?.onClick?.(e);
             }}
-            sx={[
+            sx={(theme) => [
               {
                 height: '2.5rem',
                 width: '2.5rem',
               },
-              ...(Array.isArray(checkboxProps?.sx)
-                ? checkboxProps.sx
-                : [checkboxProps?.sx]),
+              ...[parseFromValuesOrFunc((checkboxProps as any)?.sx, theme)].flat(),
+              ...[parseFromValuesOrFunc(rest?.sx, theme)].flat(),
             ]}
           />
         }

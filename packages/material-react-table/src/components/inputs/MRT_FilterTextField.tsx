@@ -69,11 +69,16 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
 
   const args = { column, rangeFilterIndex, table };
 
-  const textFieldProps = {
+  const {
+    InputProps: muiInputProps,
+    inputProps: muiHtmlInputProps,
+    slotProps: muiSlotProps,
+    ...textFieldProps
+  } = {
     ...parseFromValuesOrFunc(muiFilterTextFieldProps, args),
     ...parseFromValuesOrFunc(columnDef.muiFilterTextFieldProps, args),
     ...rest,
-  };
+  } as any;
 
   const autocompleteProps = {
     ...parseFromValuesOrFunc(muiFilterAutocompleteProps, args),
@@ -190,7 +195,7 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
           ? event.target.valueAsNumber
           : event.target.value;
     handleChange(newValue);
-    textFieldProps?.onChange?.(event);
+    (textFieldProps as any)?.onChange?.(event);
   };
 
   const handleAutocompleteInputChange = (
@@ -336,7 +341,7 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
       filterInputRefs.current![`${column.id}-${rangeFilterIndex ?? 0}`] =
         inputRef;
       if (textFieldProps.inputRef) {
-        textFieldProps.inputRef = inputRef;
+        (textFieldProps as any).inputRef = inputRef;
       }
     },
     margin: 'none',
@@ -347,18 +352,23 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
     variant: 'standard',
     ...textFieldProps,
     slotProps: {
-      ...textFieldProps.slotProps,
+      ...muiSlotProps,
       formHelperText: {
         sx: {
           fontSize: '0.75rem',
           lineHeight: '0.8rem',
           whiteSpace: 'nowrap',
         },
-        ...textFieldProps.slotProps?.formHelperText,
+        ...muiSlotProps?.formHelperText,
       },
-      input: endAdornment //hack because mui looks for presence of endAdornment key instead of undefined
-        ? { endAdornment, startAdornment, ...textFieldProps.slotProps?.input }
-        : { startAdornment, ...textFieldProps.slotProps?.input },
+      input: (ownerState: any) =>
+        resolveSlotProps(
+          muiSlotProps?.input,
+          endAdornment
+            ? { endAdornment, startAdornment, ...muiInputProps }
+            : { startAdornment, ...muiInputProps },
+          ownerState,
+        ),
       htmlInput: {
         'aria-label': filterPlaceholder,
         autoComplete: 'off',
@@ -368,12 +378,13 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
           width: filterChipLabel ? 0 : undefined,
         },
         title: filterPlaceholder,
-        ...textFieldProps.slotProps?.htmlInput,
+        ...muiHtmlInputProps,
+        ...muiSlotProps?.htmlInput,
       },
     },
     onKeyDown: (e) => {
       e.stopPropagation();
-      textFieldProps.onKeyDown?.(e);
+      (textFieldProps as any).onKeyDown?.(e);
     },
     sx: [
       {
@@ -390,21 +401,30 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
         p: 0,
         width: 'calc(100% + 4px)',
       },
-      ...(Array.isArray(textFieldProps?.sx)
-        ? textFieldProps.sx
-        : [textFieldProps?.sx]),
+      ...parseFromValuesOrFunc((textFieldProps as any)?.sx, {}),
     ],
   };
 
   const commonDatePickerProps = {
     onChange: (newDate: unknown) => {
-      handleChange(newDate);
+      setFilterValue(newDate as string);
+      if (manualFiltering) {
+        column.setFilterValue(newDate);
+      }
+    },
+    slotProps: {
+      textField: (ownerState: any) =>
+        resolveSlotProps(muiSlotProps, commonTextFieldProps, ownerState),
     },
     value: filterValue || null,
   };
 
   return (
-    <>
+    <Box
+      className="MRT_FilterTextField_Container"
+      onClick={(e) => e.stopPropagation()}
+      sx={{ p: '4px 2px' }}
+    >
       {filterVariant?.startsWith('time') ? (
         <TimePicker
           {...commonDatePickerProps}
@@ -566,7 +586,7 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
               <Box sx={{ opacity: 0.5 }}>{filterPlaceholder}</Box>
             </MenuItem>,
             ...[
-              textFieldProps.children ??
+              (textFieldProps as any).children ??
                 dropdownOptions?.map((option, index) => {
                   const { label, value } = getValueAndLabel(option);
                   return (
@@ -602,9 +622,8 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
         anchorEl={anchorEl}
         header={header}
         setAnchorEl={setAnchorEl}
-        setFilterValue={setFilterValue}
         table={table}
       />
-    </>
+    </Box>
   );
 };
