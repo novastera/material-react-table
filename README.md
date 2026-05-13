@@ -21,13 +21,13 @@ View [Documentation](https://www.material-react-table.com/)
 
 <img src="https://material-react-table.com/banner.png" alt="MRT" height="50" />
 
-> Want to use Mantine instead of Material UI? Check out [Mantine React Table](https://www.mantine-react-table.com)
-
 ## Learn More
 
-- Join the [Discord](https://discord.gg/5wqyRx6fnm) server to join in on the development discussion or ask questions
 - View the [Docs Website](https://www.material-react-table.com/)
 - See all [Props, Options, APIs, Components, and Hooks](https://www.material-react-table.com/docs/api)
+
+### Credits
+Material React Table was originally created by [Kevin Van Cott](https://github.com/KevinVandy). We are grateful for the foundation he built, which allows this fork to exist and serve the community.
 
 ### Quick Examples
 
@@ -103,10 +103,10 @@ View the full [Installation Docs](https://www.material-react-table.com/docs/gett
 npm install @mui/material @mui/x-date-pickers @mui/icons-material @emotion/react @emotion/styled
 ```
 
-3. Install material-react-table
+3. Install @novastera-oss/material-react-table
 
 ```bash
-npm install material-react-table
+npm install @novastera-oss/material-react-table
 ```
 
 > _`@tanstack/react-table`, `@tanstack/react-virtual`, and `@tanstack/match-sorter-utils`_ are internal dependencies, so you do NOT need to install them yourself.
@@ -120,7 +120,7 @@ import { useMemo, useState, useEffect } from 'react';
 import {
   MaterialReactTable,
   useMaterialReactTable,
-} from 'material-react-table';
+} from '@novastera-oss/material-react-table';
 
 //data must be stable reference (useState, useMemo, useQuery, defined outside of component, etc.)
 const data = [
@@ -185,13 +185,9 @@ _Open in [Code Sandbox](https://codesandbox.io/s/simple-material-react-table-exa
 
 ## Contributors
 
-<a href="https://github.com/kevinvandy/material-react-table/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=kevinvandy/material-react-table" />
-</a>
+PRs are Welcome! If you're looking to contribute, please check out the issues or start a discussion in this repository.
 
-PRs are Welcome, but please discuss in [GitHub Discussions](https://github.com/KevinVandy/material-react-table/discussions) or the [Discord Server](https://discord.gg/5wqyRx6fnm) first if it is a large change!
-
-Read the [Contributing Guide](https://github.com/KevinVandy/material-react-table/blob/v3/CONTRIBUTING.md) to learn how to run this project locally.
+Read the [Contributing Guide](./CONTRIBUTING.md) to learn how to run this project locally.
 
 <!-- Use the FORCE, Luke! -->
 ## About Novastera
