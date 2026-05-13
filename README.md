@@ -1,5 +1,11 @@
 # Material React Table V4
 
+### _Quickly Create React Data Tables with Material Design_
+
+### **Built with [Material UI <sup>V9</sup>](https://mui.com) and [TanStack Table <sup>V8</sup>](https://tanstack.com/table/v8)**
+
+<img src="https://material-react-table.com/banner.png" alt="MRT" height="50" />
+
 This is a fork of [Material React Table](https://www.material-react-table.com/). It was created to provide maintenance and update dependencies to the latest standards, including support for:
 - Material UI v9
 - React 19
@@ -12,14 +18,6 @@ The original repository has not seen updates for over a year and the v9 beta lac
 # Material React Table V3
 
 View [Documentation](https://www.material-react-table.com/)
-
-## About
-
-### _Quickly Create React Data Tables with Material Design_
-
-### **Built with [Material UI <sup>V9</sup>](https://mui.com) and [TanStack Table <sup>V8</sup>](https://tanstack.com/table/v8)**
-
-<img src="https://material-react-table.com/banner.png" alt="MRT" height="50" />
 
 ## Learn More
 
