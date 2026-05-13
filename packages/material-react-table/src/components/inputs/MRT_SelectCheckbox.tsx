@@ -81,10 +81,12 @@ export const MRT_SelectCheckbox = <TData extends MRT_RowData>({
     checked: isChecked,
     disabled:
       isLoading || (row && !row.getCanSelect()) || row?.id === 'mrt-row-create',
-    inputProps: {
-      'aria-label': selectAll
-        ? localization.toggleSelectAll
-        : localization.toggleSelectRow,
+    slotProps: {
+      htmlInput: {
+        'aria-label': selectAll
+          ? localization.toggleSelectAll
+          : localization.toggleSelectRow,
+      },
     },
     onChange: (event: ChangeEvent<HTMLInputElement>) => {
       event.stopPropagation();

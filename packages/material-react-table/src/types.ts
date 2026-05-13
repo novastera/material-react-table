@@ -68,10 +68,7 @@ export type DistributiveOmit<T, K extends keyof any> = T extends any
   ? Omit<T, K>
   : never;
 
-export type TextFieldProps = DistributiveOmit<
-  MuiTextFieldProps,
-  'InputProps' | 'inputProps' | 'SelectProps' | 'components' | 'componentsProps'
->;
+export type TextFieldProps = MuiTextFieldProps;
 import { type Theme } from '@mui/material/styles';
 import {
   type DatePickerProps,
