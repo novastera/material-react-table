@@ -146,6 +146,12 @@ npm install material-react-table
 
 > _`@tanstack/react-table`, `@tanstack/react-virtual`, and `@tanstack/match-sorter-utils`_ are internal dependencies, so you do NOT need to install them yourself.
 
+### CssVars Theming Note
+
+When using MUI CssVars (for example, `theme.vars.palette.background.paper`) with `mrtTheme.baseBackgroundColor`, MRT will still use your value directly for raw background assignments.
+
+For derived shades/alpha styles (hover overlays, pinned overlays, loading overlay, menu surface), MRT uses a dual path: Material UI color math for concrete colors, and CSS `color-mix(...)` for CSS variable inputs. If a value cannot be derived safely, MRT falls back to palette colors.
+
 ### Usage
 
 > Read the full usage docs [here](https://www.material-react-table.com/docs/getting-started/usage/)

@@ -16,6 +16,109 @@ import { parseFromValuesOrFunc } from './utils';
 
 export const parseCSSVarId = (id: string) => id.replace(/[^a-zA-Z0-9]/g, '_');
 
+const colorManipulatableCache = new Map<string, boolean>();
+
+const isCssVariableColor = (color: string) => color.includes('var(');
+const isColorMixExpression = (color: string) => color.trim().startsWith('color-mix(');
+const toPercent = (value: number) => `${Math.round(value * 10000) / 100}%`;
+
+const colorMix = ({
+  color,
+  mixWith,
+  amount,
+}: {
+  amount: number;
+  color: string;
+  mixWith: string;
+}) => `color-mix(in srgb, ${color}, ${mixWith} ${toPercent(amount)})`;
+
+export const isColorManipulatable = (color: string): boolean => {
+  const cachedResult = colorManipulatableCache.get(color);
+  if (cachedResult !== undefined) {
+    return cachedResult;
+  }
+
+  // Fast path for CssVars and nested color-mix expressions.
+  if (isCssVariableColor(color) || isColorMixExpression(color)) {
+    colorManipulatableCache.set(color, false);
+    return false;
+  }
+
+  try {
+    alpha(color, 1);
+    colorManipulatableCache.set(color, true);
+    return true;
+  } catch {
+    colorManipulatableCache.set(color, false);
+    return false;
+  }
+};
+
+export const resolveColorForColorMath = ({
+  color,
+  fallbackColor,
+}: {
+  color: string;
+  fallbackColor: string;
+}) => (isColorManipulatable(color) ? color : fallbackColor);
+
+export const resolveBaseBackgroundForColorTools = (
+  muiTheme: Theme,
+  baseBackgroundColor: string,
+): string =>
+  resolveColorForColorMath({
+    color: baseBackgroundColor,
+    fallbackColor:
+      muiTheme.palette.mode === 'dark'
+        ? muiTheme.palette.background.default
+        : muiTheme.palette.background.paper,
+  });
+
+export const mrtLighten = ({
+  color,
+  fallbackColor,
+  amount,
+}: {
+  amount: number;
+  color: string;
+  fallbackColor: string;
+}) =>
+  isColorManipulatable(color)
+    ? lighten(color, amount)
+    : isCssVariableColor(color) || isColorMixExpression(color)
+      ? colorMix({ amount, color, mixWith: 'white' })
+      : lighten(fallbackColor, amount);
+
+export const mrtDarken = ({
+  color,
+  fallbackColor,
+  amount,
+}: {
+  amount: number;
+  color: string;
+  fallbackColor: string;
+}) =>
+  isColorManipulatable(color)
+    ? darken(color, amount)
+    : isCssVariableColor(color) || isColorMixExpression(color)
+      ? colorMix({ amount, color, mixWith: 'black' })
+      : darken(fallbackColor, amount);
+
+export const mrtAlpha = ({
+  color,
+  fallbackColor,
+  amount,
+}: {
+  amount: number;
+  color: string;
+  fallbackColor: string;
+}) =>
+  isColorManipulatable(color)
+    ? alpha(color, amount)
+    : isCssVariableColor(color) || isColorMixExpression(color)
+      ? `color-mix(in srgb, ${color} ${toPercent(amount)}, transparent)`
+      : alpha(fallbackColor, amount);
+
 export const getMRTTheme = <TData extends MRT_RowData>(
   mrtTheme: MRT_TableOptions<TData>['mrtTheme'],
   muiTheme: Theme,
@@ -26,6 +129,10 @@ export const getMRTTheme = <TData extends MRT_RowData>(
     (muiTheme.palette.mode === 'dark'
       ? lighten(muiTheme.palette.background.default, 0.05)
       : muiTheme.palette.background.default);
+  const baseBackgroundColorForColorTools = resolveBaseBackgroundForColorTools(
+    muiTheme,
+    baseBackgroundColor,
+  );
   return {
     baseBackgroundColor,
     cellNavigationOutlineColor: muiTheme.palette.primary.main,
@@ -34,7 +141,11 @@ export const getMRTTheme = <TData extends MRT_RowData>(
       muiTheme.palette.mode === 'dark'
         ? darken(muiTheme.palette.warning.dark, 0.25)
         : lighten(muiTheme.palette.warning.light, 0.5),
-    menuBackgroundColor: lighten(baseBackgroundColor, 0.07),
+    menuBackgroundColor: mrtLighten({
+      amount: 0.07,
+      color: baseBackgroundColor,
+      fallbackColor: baseBackgroundColorForColorTools,
+    }),
     pinnedRowBackgroundColor: alpha(muiTheme.palette.primary.main, 0.1),
     selectedRowBackgroundColor: alpha(muiTheme.palette.primary.main, 0.2),
     ...mrtThemeOverrides,
@@ -61,18 +172,24 @@ export const getCommonPinnedCellStyles = <TData extends MRT_RowData>({
   theme: Theme;
 }): SxProps<Theme> => {
   const { baseBackgroundColor } = table.options.mrtTheme;
+  const baseBackgroundColorForColorTools = resolveBaseBackgroundForColorTools(
+    theme,
+    baseBackgroundColor,
+  );
   const isPinned = column?.getIsPinned();
 
   return {
     '&[data-pinned="true"]': {
       '&:before': {
-        backgroundColor: alpha(
-          darken(
-            baseBackgroundColor,
-            theme.palette.mode === 'dark' ? 0.05 : 0.01,
-          ),
-          0.97,
-        ),
+        backgroundColor: mrtAlpha({
+          amount: 0.97,
+          color: mrtDarken({
+            amount: theme.palette.mode === 'dark' ? 0.05 : 0.01,
+            color: baseBackgroundColor,
+            fallbackColor: baseBackgroundColorForColorTools,
+          }),
+          fallbackColor: baseBackgroundColorForColorTools,
+        }),
         boxShadow: column
           ? isPinned === 'left' && column.getIsLastColumn(isPinned)
             ? `-4px 0 4px -4px ${alpha(theme.palette.grey[700], 0.5)} inset`

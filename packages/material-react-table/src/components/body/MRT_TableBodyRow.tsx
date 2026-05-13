@@ -3,9 +3,6 @@ import { type VirtualItem } from '@tanstack/react-virtual';
 import TableRow, { type TableRowProps } from '@mui/material/TableRow';
 import {
   type Theme,
-  alpha,
-  darken,
-  lighten,
   useTheme,
 } from '@mui/material/styles';
 import { MRT_TableBodyCell, Memo_MRT_TableBodyCell } from './MRT_TableBodyCell';
@@ -23,6 +20,10 @@ import { getIsRowSelected } from '../../utils/row.utils';
 import {
   commonCellBeforeAfterStyles,
   getCommonPinnedCellStyles,
+  mrtAlpha,
+  mrtDarken,
+  mrtLighten,
+  resolveBaseBackgroundForColorTools,
 } from '../../utils/style.utils';
 import { parseFromValuesOrFunc } from '../../utils/utils';
 
@@ -92,6 +93,10 @@ export const MRT_TableBodyRow = <TData extends MRT_RowData>({
   const isRowPinned = enableRowPinning && row.getIsPinned();
   const isDraggingRow = draggingRow?.id === row.id;
   const isHoveredRow = hoveredRow?.id === row.id;
+  const baseBackgroundColorForColorTools = resolveBaseBackgroundForColorTools(
+    theme,
+    baseBackgroundColor,
+  );
 
   const tableRowProps = {
     ...parseFromValuesOrFunc(muiTableBodyRowProps, {
@@ -165,8 +170,16 @@ export const MRT_TableBodyRow = <TData extends MRT_RowData>({
       ? isRowSelected
         ? cellHighlightColor
         : theme.palette.mode === 'dark'
-          ? `${lighten(baseBackgroundColor, 0.3)}`
-          : `${darken(baseBackgroundColor, 0.3)}`
+          ? mrtLighten({
+              amount: 0.3,
+              color: baseBackgroundColor,
+              fallbackColor: baseBackgroundColorForColorTools,
+            })
+          : mrtDarken({
+              amount: 0.3,
+              color: baseBackgroundColor,
+              fallbackColor: baseBackgroundColorForColorTools,
+            })
       : undefined;
 
   return (
@@ -195,7 +208,11 @@ export const MRT_TableBodyRow = <TData extends MRT_RowData>({
           (theme: Theme) => ({
             '&:hover td:after': cellHighlightColorHover
               ? {
-                  backgroundColor: alpha(cellHighlightColorHover, 0.3),
+                  backgroundColor: mrtAlpha({
+                    amount: 0.3,
+                    color: cellHighlightColorHover,
+                    fallbackColor: baseBackgroundColorForColorTools,
+                  }),
                   ...commonCellBeforeAfterStyles,
                 }
               : undefined,
