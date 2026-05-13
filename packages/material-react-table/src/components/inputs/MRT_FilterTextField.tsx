@@ -401,7 +401,9 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
         p: 0,
         width: 'calc(100% + 4px)',
       },
-      ...parseFromValuesOrFunc((textFieldProps as any)?.sx, {}),
+      ...(Array.isArray((textFieldProps as any)?.sx)
+        ? (textFieldProps as any).sx
+        : [(textFieldProps as any)?.sx]),
     ],
   };
 
