@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
 import Menu, { type MenuProps } from '@mui/material/Menu';
-import { MRT_ActionMenuItem } from './MRT_ActionMenuItem';
+import { useSelector } from '@tanstack/react-store';
+
 import {
   type MRT_FilterOption,
   type MRT_Header,
@@ -9,6 +9,7 @@ import {
   type MRT_RowData,
   type MRT_TableInstance,
 } from '../../types';
+import { MRT_ActionMenuItem } from './MRT_ActionMenuItem';
 
 export const mrtFilterOptions = (
   localization: MRT_Localization,
@@ -124,7 +125,6 @@ export const MRT_FilterOptionMenu = <TData extends MRT_RowData>({
   ...rest
 }: MRT_FilterOptionMenuProps<TData>) => {
   const {
-    getState,
     options: {
       columnFilterModeOptions,
       globalFilterModeOptions,
@@ -136,7 +136,8 @@ export const MRT_FilterOptionMenu = <TData extends MRT_RowData>({
     setColumnFilterFns,
     setGlobalFilterFn,
   } = table;
-  const { density, globalFilterFn } = getState();
+  const density = useSelector(table.atoms.density);
+  const globalFilterFn = useSelector(table.atoms.globalFilterFn);
   const { column } = header ?? {};
   const { columnDef } = column ?? {};
   const currentFilterValue = column?.getFilterValue();
@@ -151,17 +152,19 @@ export const MRT_FilterOptionMenu = <TData extends MRT_RowData>({
     ].filter((option) => rangeModes.includes(option));
   }
 
-  const internalFilterOptions = useMemo(
-    () =>
-      mrtFilterOptions(localization).filter((filterOption) =>
-        columnDef
-          ? allowedColumnFilterOptions === undefined ||
-            allowedColumnFilterOptions?.includes(filterOption.option)
-          : (!globalFilterModeOptions ||
-              globalFilterModeOptions.includes(filterOption.option)) &&
-            ['contains', 'fuzzy', 'startsWith'].includes(filterOption.option),
-      ),
-    [],
+  //plain computed value (not useMemo) - the previous manual dependency array (`[]`) didn't match
+  //what this actually reads (allowedColumnFilterOptions, columnDef, globalFilterModeOptions,
+  //localization were used but not listed), which made React Compiler refuse to compile this
+  //component at all (category PreserveManualMemo) rather than risk a stale value. Letting the
+  //compiler infer the real dependencies itself is both correct and simpler.
+  const internalFilterOptions = mrtFilterOptions(localization).filter(
+    (filterOption) =>
+      columnDef
+        ? allowedColumnFilterOptions === undefined ||
+          allowedColumnFilterOptions?.includes(filterOption.option)
+        : (!globalFilterModeOptions ||
+            globalFilterModeOptions.includes(filterOption.option)) &&
+          ['contains', 'fuzzy', 'startsWith'].includes(filterOption.option),
   );
 
   const handleSelectFilterMode = (option: MRT_FilterOption) => {

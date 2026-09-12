@@ -1,4 +1,5 @@
 import { type ChangeEvent, type MouseEvent } from 'react';
+
 import { rankGlobalFuzzy } from '../fns/sortingFns';
 import {
   type MRT_Row,
@@ -13,7 +14,7 @@ export const getMRT_Rows = <TData extends MRT_RowData>(
 ): MRT_Row<TData>[] => {
   const {
     getCenterRows,
-    getPrePaginationRowModel,
+    getPrePaginatedRowModel,
     getRowModel,
     getState,
     getTopRows,
@@ -35,12 +36,12 @@ export const getMRT_Rows = <TData extends MRT_RowData>(
     rows =
       !enableRowPinning || rowPinningDisplayMode?.includes('sticky')
         ? all
-          ? getPrePaginationRowModel().rows
+          ? getPrePaginatedRowModel().rows
           : getRowModel().rows
         : getCenterRows();
   } else {
     // fuzzy ranking adjustments
-    rows = getPrePaginationRowModel().rows.sort((a, b) =>
+    rows = getPrePaginatedRowModel().rows.sort((a, b) =>
       rankGlobalFuzzy(a, b),
     );
     if (enablePagination && !manualPagination && !all) {
@@ -84,8 +85,39 @@ export const getMRT_Rows = <TData extends MRT_RowData>(
   return rows;
 };
 
+//Row reordering has no first-class commit mechanism (unlike columns' table.setColumnOrder) -
+//MRT only tracks draggingRow/hoveredRow, since `data` is always fully consumer-owned and MRT never
+//mutates it or calls a setter for it. Every row-reordering example previously hand-wrote this exact
+//splice inside muiRowDragHandleProps.onDragEnd; this packages that pattern as a reusable, tested
+//utility instead of leaving every consumer to copy it correctly themselves.
+//
+//Operates on `row.index` positionally within `data` - only correct when `data`'s order matches
+//what's currently displayed (no active sorting/filtering/pagination reindexing the rows being
+//reordered), matching the exact assumption the hand-written pattern already made.
+//
+//Returns the same `data` reference, unchanged, when either row is missing (no drag in progress, or
+//dropped outside a valid target) - mirrors table.getState().draggingRow/hoveredRow's own
+//null-when-idle semantics, and lets `setData(reorderRows(data, draggingRow, hoveredRow))` skip a
+//redundant render via useState's Object.is bailout.
+export const reorderRows = <TData extends MRT_RowData>(
+  data: TData[],
+  draggingRow: MRT_Row<TData> | null,
+  //Partial, not MRT_Row - matches hoveredRow's real public type on MRT_TableState (unlike
+  //draggingRow, which is always a full row reference once a drag is in progress).
+  hoveredRow: null | Partial<MRT_Row<TData>>,
+): TData[] => {
+  if (!draggingRow || hoveredRow?.index === undefined) return data;
+  const newData = [...data];
+  const [draggedItem] = newData.splice(draggingRow.index, 1);
+  newData.splice(hoveredRow.index, 0, draggedItem);
+  return newData;
+};
+
+//Narrower than the full MRT_TableInstance - only getState/options are read here, which lets a
+//caller pass just those two (both stable references, unlike the table wrapper itself) instead of
+//the whole unstable table object - see useMRT_Effects.ts for why that distinction matters.
 export const getCanRankRows = <TData extends MRT_RowData>(
-  table: MRT_TableInstance<TData>,
+  table: Pick<MRT_TableInstance<TData>, 'getState' | 'options'>,
 ) => {
   const {
     getState,
@@ -250,9 +282,11 @@ export const getMRT_SelectAllHandler =
       refs: { lastSelectedRowId },
     } = table;
 
-    selectAllMode === 'all' || forceAll
-      ? table.toggleAllRowsSelected(value ?? (event as any).target.checked)
-      : table.toggleAllPageRowsSelected(value ?? (event as any).target.checked);
+    if (selectAllMode === 'all' || forceAll) {
+      table.toggleAllRowsSelected(value ?? (event as any).target.checked);
+    } else {
+      table.toggleAllPageRowsSelected(value ?? (event as any).target.checked);
+    }
     if (enableRowPinning && rowPinningDisplayMode?.includes('select')) {
       table.setRowPinning({ bottom: [], top: [] });
     }

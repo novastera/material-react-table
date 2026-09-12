@@ -1,9 +1,7 @@
 import {
   type ChangeEvent,
   type MouseEvent,
-  SyntheticEvent,
-  useCallback,
-  useEffect,
+  type SyntheticEvent,
   useRef,
   useState,
 } from 'react';
@@ -32,7 +30,12 @@ import {
   getColumnFilterInfo,
   useDropdownOptions,
 } from '../../utils/column.utils';
-import { getValueAndLabel, parseFromValuesOrFunc, resolveSlotProps } from '../../utils/utils';
+import {
+  getValueAndLabel,
+  parseFromValuesOrFunc,
+  resolveSlotProps,
+  setRefMapEntry,
+} from '../../utils/utils';
 import { MRT_FilterOptionMenu } from '../menus/MRT_FilterOptionMenu';
 
 export interface MRT_FilterTextFieldProps<TData extends MRT_RowData>
@@ -164,8 +167,15 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
         : null,
     );
 
-  const handleChangeDebounced = useCallback(
-    debounce(
+  //lazily create the debounced function once and hold it in a ref (not useMemo) - debounce()
+  //returns a stateful closure (its own pending-timeout bookkeeping), so its identity must
+  //survive across renders the same way a ref's does; see
+  //https://react.dev/reference/react/useRef#avoiding-recreating-the-ref-contents
+  const handleChangeDebouncedRef = useRef<((newValue: unknown) => void) | null>(
+    null,
+  );
+  if (handleChangeDebouncedRef.current === null) {
+    handleChangeDebouncedRef.current = debounce(
       (newValue: unknown) => {
         if (isRangeFilter) {
           column.setFilterValue((old: Array<Date | null | number | string>) => {
@@ -178,9 +188,9 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
         }
       },
       isTextboxFilter ? (manualFiltering ? 400 : 200) : 1,
-    ),
-    [],
-  );
+    );
+  }
+  const handleChangeDebounced = handleChangeDebouncedRef.current;
 
   const handleChange = (newValue: unknown) => {
     setFilterValue((newValue as string) ?? '');
@@ -251,21 +261,21 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
     setAnchorEl(event.currentTarget);
   };
 
-  const isMounted = useRef(false);
-
-  useEffect(() => {
-    if (isMounted.current) {
-      const filterValue = column.getFilterValue();
-      if (filterValue === undefined) {
-        handleClear();
-      } else if (isRangeFilter && rangeFilterIndex !== undefined) {
-        setFilterValue((filterValue as [string, string])[rangeFilterIndex]);
-      } else {
-        setFilterValue(filterValue as string);
-      }
+  //adjust filterValue when the external column filter value changes, skipping the first render -
+  //see https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const externalFilterValue = column.getFilterValue();
+  const [prevExternalFilterValue, setPrevExternalFilterValue] =
+    useState(externalFilterValue);
+  if (prevExternalFilterValue !== externalFilterValue) {
+    setPrevExternalFilterValue(externalFilterValue);
+    if (externalFilterValue === undefined) {
+      handleClear();
+    } else if (isRangeFilter && rangeFilterIndex !== undefined) {
+      setFilterValue((externalFilterValue as [string, string])[rangeFilterIndex]);
+    } else {
+      setFilterValue(externalFilterValue as string);
     }
-    isMounted.current = true;
-  }, [column.getFilterValue()]);
+  }
 
   if (columnDef.Filter) {
     return (
@@ -338,8 +348,11 @@ export const MRT_FilterTextField = <TData extends MRT_RowData>({
       </label>
     ) : null,
     inputRef: (inputRef) => {
-      filterInputRefs.current![`${column.id}-${rangeFilterIndex ?? 0}`] =
-        inputRef;
+      setRefMapEntry(
+        filterInputRefs,
+        `${column.id}-${rangeFilterIndex ?? 0}`,
+        inputRef,
+      );
       if (textFieldProps.inputRef) {
         (textFieldProps as any).inputRef = inputRef;
       }

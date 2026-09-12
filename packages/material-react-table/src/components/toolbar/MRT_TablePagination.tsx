@@ -5,10 +5,12 @@ import MenuItem from '@mui/material/MenuItem';
 import Pagination, { type PaginationProps } from '@mui/material/Pagination';
 import PaginationItem from '@mui/material/PaginationItem';
 import Select, { type SelectProps } from '@mui/material/Select';
+import { useTheme } from '@mui/material/styles';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
+import { useSelector } from '@tanstack/react-store';
+
 import { type MRT_RowData, type MRT_TableInstance } from '../../types';
 import { flipIconStyles, getCommonTooltipProps } from '../../utils/style.utils';
 import { parseFromValuesOrFunc } from '../../utils/utils';
@@ -17,12 +19,12 @@ const defaultRowsPerPage = [5, 10, 15, 20, 25, 30, 50, 100];
 
 export interface MRT_TablePaginationProps<TData extends MRT_RowData>
   extends Partial<
-    PaginationProps & {
-      SelectProps?: Partial<SelectProps>;
+    {
       disabled?: boolean;
       rowsPerPageOptions?: { label: string; value: number }[] | number[];
+      SelectProps?: Partial<SelectProps>;
       showRowsPerPage?: boolean;
-    }
+    } & PaginationProps
   > {
   position?: 'bottom' | 'top';
   table: MRT_TableInstance<TData>;
@@ -37,7 +39,6 @@ export const MRT_TablePagination = <TData extends MRT_RowData>({
   const isMobile = useMediaQuery('(max-width: 720px)');
 
   const {
-    getState,
     options: {
       enableToolbarInternalActions,
       icons: { ChevronLeftIcon, ChevronRightIcon, FirstPageIcon, LastPageIcon },
@@ -47,9 +48,7 @@ export const MRT_TablePagination = <TData extends MRT_RowData>({
       paginationDisplayMode,
     },
   } = table;
-  const {
-    pagination: { pageIndex = 0, pageSize = 10 },
-  } = getState();
+  const { pageIndex = 0, pageSize = 10 } = useSelector(table.atoms.pagination);
 
   const paginationProps = {
     ...parseFromValuesOrFunc(muiPaginationProps, {
@@ -65,13 +64,13 @@ export const MRT_TablePagination = <TData extends MRT_RowData>({
   const lastRowIndex = Math.min(pageIndex * pageSize + pageSize, totalRowCount);
 
   const {
+    disabled = false,
+    rowsPerPageOptions = defaultRowsPerPage,
     SelectProps: {
       inputProps: muiInputProps,
       slotProps: muiSlotProps,
       ...SelectProps
     } = {} as any,
-    disabled = false,
-    rowsPerPageOptions = defaultRowsPerPage,
     showFirstButton = showFirstLastPageButtons,
     showLastButton = showFirstLastPageButtons,
     showRowsPerPage = true,
@@ -113,9 +112,13 @@ export const MRT_TablePagination = <TData extends MRT_RowData>({
             {localization.rowsPerPage}
           </InputLabel>
           <Select
-            MenuProps={{ disableScrollLock: true }}
-            disableUnderline
             disabled={disabled}
+            disableUnderline
+            label={localization.rowsPerPage}
+            MenuProps={{ disableScrollLock: true }}
+            onChange={(event) =>
+              table.setPageSize(Number(event.target.value))
+            }
             slotProps={{
               ...muiSlotProps,
               input: {
@@ -125,10 +128,6 @@ export const MRT_TablePagination = <TData extends MRT_RowData>({
                 ...muiSlotProps?.input,
               },
             }}
-            label={localization.rowsPerPage}
-            onChange={(event) =>
-              table.setPageSize(Number(event.target.value))
-            }
             sx={{ mb: 0 }}
             value={pageSize}
             variant="standard"
@@ -189,7 +188,7 @@ export const MRT_TablePagination = <TData extends MRT_RowData>({
           }-${lastRowIndex.toLocaleString(localization.language)} ${
             localization.of
           } ${totalRowCount.toLocaleString(localization.language)}`}</Typography>
-          <Box sx={{ gap: '4px', display: 'flex' }}>
+          <Box sx={{ display: 'flex', gap: '4px' }}>
             {showFirstButton && (
               <Tooltip {...tooltipProps} title={localization.goToFirstPage}>
                 <span>

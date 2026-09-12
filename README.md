@@ -1,26 +1,19 @@
-# Material React Table V4
+# Material React Table V5
 
 ### _Quickly Create React Data Tables with Material Design_
 
-### **Built with [Material UI <sup>V9</sup>](https://mui.com) and [TanStack Table <sup>V8</sup>](https://tanstack.com/table/v8)**
+### **Built with [Material UI <sup>V9</sup>](https://mui.com) and [TanStack Table <sup>V9</sup>](https://tanstack.com/table/latest)**
 
 <img src="https://material-react-table.com/banner.png" alt="MRT" height="50" />
 
-This is a fork of [Material React Table](https://www.material-react-table.com/). It was created to provide maintenance and update dependencies to the latest standards, including support for:
-- Material UI v9
-- React 19
-- Vite 8 & Rollup 4
-- ESLint 10
-- TypeScript 6 (Zero runtime helpers)
+This is a fork of [Material React Table](https://www.material-react-table.com/) maintained by **Novastera**. V5 is a from-scratch rewrite, not an incremental update — it moves the table engine onto TanStack Table v9, rebuilds on Material UI v9 and React 19, and adopts React Compiler for automatic memoization, so the library stops carrying forward v8-era workarounds and starts using what its own dependencies offer natively.
 
-The original repository has not seen updates for over a year and the v9 beta lacked progress. This version ensures the library remains usable in modern development stacks.
-
-# Material React Table V3
-
-View [Documentation](https://www.material-react-table.com/)
+**Still on React 18 or an older stack?** The [v4 branch](https://github.com/novastera/material-react-table/tree/v4) remains available — V5 is not a drop-in upgrade, so stay on v4 until you're ready to move (see the [Migration Guide](./packages/material-react-table/MIGRATION.md)).
 
 ## Learn More
 
+- See the [Changelog](./packages/material-react-table/CHANGELOG.md) for release notes and breaking changes, especially before upgrading across a major version
+- Upgrading from v4? See the [Migration Guide](./packages/material-react-table/MIGRATION.md) for a step-by-step walkthrough with code
 - View the [Docs Website](https://www.material-react-table.com/)
 - See all [Props, Options, APIs, Components, and Hooks](https://www.material-react-table.com/docs/api)
 
@@ -187,13 +180,8 @@ PRs are Welcome! If you're looking to contribute, please check out the issues or
 
 Read the [Contributing Guide](./CONTRIBUTING.md) to learn how to run this project locally.
 
-<!-- Use the FORCE, Luke! -->
 ## About Novastera
 
-**Material React Table V4** is a humble fork maintained by **Novastera**. We transitioned this project to **Material UI v9** to ensure it remains compatible with the latest modern stacks.
+We're the folks who dusted off this table and gave it a React 19 engine. PRs, issues, and stars are the best kind of coffee but if what your company actually needs is to run your business and client relationships with AI *without* shipping your data off to feed someone else's model, that's the real thing we build. Come sign up at [novastera.com](https://novastera.com).
 
-Please keep in mind that while we've made these updates, we aren't able to commit a lot of time to active maintenance or support. We're sharing this version "as is"—you are more than welcome to use it as a reference or take inspiration for your own forks. Don't expect regular updates or follow-ups, but we hope this provides a nice starting point for anyone moving to MUI v9.
-
-Enjoy!
-
-Learn more: [https://novastera.com/resources](https://novastera.com/resources)
+<!-- Use the FORCE, Luke! -->

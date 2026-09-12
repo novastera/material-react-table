@@ -1,16 +1,34 @@
-import { useMemo, useState } from 'react';
+import {
+  DndContext,
+  type DragOverEvent,
+  type DragStartEvent,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import Menu, { type MenuProps } from '@mui/material/Menu';
-import { MRT_ShowHideColumnsMenuItems } from './MRT_ShowHideColumnsMenuItems';
+import { useSelector } from '@tanstack/react-store';
+import { useState } from 'react';
+
 import {
   type MRT_Column,
   type MRT_RowData,
   type MRT_TableInstance,
   type MRT_VisibilityState
 } from '../../types';
+import { commitColumnReorder } from '../../utils/column.utils';
 import { getDefaultColumnOrderIds } from '../../utils/displayColumn.utils';
+import { MRT_ShowHideColumnsMenuItems } from './MRT_ShowHideColumnsMenuItems';
 
 export interface MRT_ShowHideColumnsMenuProps<TData extends MRT_RowData>
   extends Partial<MenuProps> {
@@ -30,12 +48,11 @@ export const MRT_ShowHideColumnsMenu = <TData extends MRT_RowData>({
     getAllColumns,
     getAllLeafColumns,
     getCenterLeafColumns,
+    getEndLeafColumns,
     getIsAllColumnsVisible,
     getIsSomeColumnsPinned,
     getIsSomeColumnsVisible,
-    getLeftLeafColumns,
-    getRightLeafColumns,
-    getState,
+    getStartLeafColumns,
     initialState,
     options: {
       enableColumnOrdering,
@@ -45,7 +62,12 @@ export const MRT_ShowHideColumnsMenu = <TData extends MRT_RowData>({
       mrtTheme: { menuBackgroundColor },
     },
   } = table;
-  const { columnOrder, columnPinning, density } = getState();
+  const columnOrder = useSelector(table.atoms.columnOrder);
+  const density = useSelector(table.atoms.density);
+  //not read directly - getIsSomeColumnsVisible()/getIsAllColumnsVisible() below read this live.
+  useSelector(table.atoms.columnVisibility);
+  //not read directly - getIsSomeColumnsPinned() below reads this live.
+  useSelector(table.atoms.columnPinning);
 
   const handleToggleAllColumns = (value?: boolean) => {
     const updates =
@@ -59,47 +81,76 @@ export const MRT_ShowHideColumnsMenu = <TData extends MRT_RowData>({
     table.setColumnVisibility((old) => ({ ...old, ...updates }));
   };
 
-  const allColumns = useMemo(() => {
+  const allColumns = (() => {
     const columns = getAllColumns();
     if (
       columnOrder.length > 0 &&
       !columns.some((col) => col.columnDef.columnDefType === 'group')
     ) {
+      const centerLeafColumns = getCenterLeafColumns();
       return [
-        ...getLeftLeafColumns(),
+        ...getStartLeafColumns(),
         ...Array.from(new Set(columnOrder)).map((colId) =>
-          getCenterLeafColumns().find((col) => col?.id === colId),
+          centerLeafColumns.find((col) => col?.id === colId),
         ),
-        ...getRightLeafColumns(),
+        ...getEndLeafColumns(),
       ].filter(Boolean);
     }
     return columns;
-  }, [
-    columnOrder,
-    columnPinning,
-    getAllColumns(),
-    getCenterLeafColumns(),
-    getLeftLeafColumns(),
-    getRightLeafColumns(),
-  ]) as MRT_Column<TData>[];
+  })() as MRT_Column<TData>[];
 
   const isNestedColumns = allColumns.some(
     (col) => col.columnDef.columnDefType === 'group',
   );
 
-  const hasColumnOrderChanged = useMemo(
-    () =>
-      columnOrder.length !== initialState.columnOrder.length ||
-      !columnOrder.every(
-        (column, index) => column === initialState.columnOrder[index],
-      ),
+  const hasColumnOrderChanged =
+    columnOrder.length !== initialState.columnOrder.length ||
+    !columnOrder.every(
+      (column, index) => column === initialState.columnOrder[index],
+    );
 
-    [columnOrder, initialState.columnOrder],
-  );
-
+  const [draggingColumn, setDraggingColumn] =
+    useState<MRT_Column<TData> | null>(null);
   const [hoveredColumn, setHoveredColumn] = useState<MRT_Column<TData> | null>(
     null,
   );
+
+  //self-contained dnd-kit context for reordering columns inside this popover - independent of
+  //the table's own draggingColumn/hoveredColumn atoms and useMRT_DragAndDrop.ts (confirmed this
+  //was already a fully separate local-state implementation before this migration, just using
+  //native HTML5 DnD instead of dnd-kit). findColumn resolves dnd-kit's id-only active/over back
+  //to a real MRT_Column since allColumns is the single source of truth for what's rendered here.
+  const findColumn = (id: string) =>
+    allColumns.find((col) => col.id === id) ?? null;
+
+  const sensors = useSensors(
+    useSensor(MouseSensor),
+    useSensor(TouchSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setDraggingColumn(findColumn(String(event.active.id)));
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const overColumn = event.over ? findColumn(String(event.over.id)) : null;
+    setHoveredColumn(
+      overColumn && overColumn.columnDef.enableColumnOrdering !== false
+        ? overColumn
+        : null,
+    );
+  };
+
+  const handleDragEnd = () => {
+    if (draggingColumn && hoveredColumn) {
+      commitColumnReorder(table, draggingColumn, hoveredColumn);
+    }
+    setDraggingColumn(null);
+    setHoveredColumn(null);
+  };
 
   return (
     <Menu
@@ -137,12 +188,12 @@ export const MRT_ShowHideColumnsMenu = <TData extends MRT_RowData>({
         )}
         {enableColumnOrdering && (
           <Button
+            disabled={!hasColumnOrderChanged}
             onClick={() =>
               table.setColumnOrder(
                 getDefaultColumnOrderIds(table.options, true),
               )
             }
-            disabled={!hasColumnOrderChanged}
           >
             {localization.resetOrder}
           </Button>
@@ -165,17 +216,29 @@ export const MRT_ShowHideColumnsMenu = <TData extends MRT_RowData>({
         )}
       </Box>
       <Divider />
-      {allColumns.map((column, index) => (
-        <MRT_ShowHideColumnsMenuItems
-          allColumns={allColumns}
-          column={column}
-          hoveredColumn={hoveredColumn}
-          isNestedColumns={isNestedColumns}
-          key={`${index}-${column.id}`}
-          setHoveredColumn={setHoveredColumn}
-          table={table}
-        />
-      ))}
+      <DndContext
+        onDragEnd={handleDragEnd}
+        onDragOver={handleDragOver}
+        onDragStart={handleDragStart}
+        sensors={sensors}
+      >
+        <SortableContext
+          items={allColumns.map((column) => column.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {allColumns.map((column, index) => (
+            <MRT_ShowHideColumnsMenuItems
+              allColumns={allColumns}
+              column={column}
+              draggingColumn={draggingColumn}
+              hoveredColumn={hoveredColumn}
+              isNestedColumns={isNestedColumns}
+              key={`${index}-${column.id}`}
+              table={table}
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
     </Menu>
   );
 };

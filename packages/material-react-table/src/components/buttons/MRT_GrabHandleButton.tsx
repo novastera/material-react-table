@@ -1,19 +1,28 @@
-import { type DragEventHandler } from 'react';
+import {
+  type DraggableAttributes,
+  type DraggableSyntheticListeners,
+} from '@dnd-kit/core';
 import IconButton, { type IconButtonProps } from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
+import { type Ref } from 'react';
+
 import { type MRT_RowData, type MRT_TableInstance } from '../../types';
 import { getCommonTooltipProps } from '../../utils/style.utils';
 
 export interface MRT_GrabHandleButtonProps<TData extends MRT_RowData>
   extends IconButtonProps {
+  activatorRef?: Ref<HTMLButtonElement>;
+  attributes?: DraggableAttributes;
   iconButtonProps?: IconButtonProps;
+  listeners?: DraggableSyntheticListeners;
   location?: 'column' | 'row';
-  onDragEnd: DragEventHandler<HTMLButtonElement>;
-  onDragStart: DragEventHandler<HTMLButtonElement>;
   table: MRT_TableInstance<TData>;
 }
 
 export const MRT_GrabHandleButton = <TData extends MRT_RowData>({
+  activatorRef,
+  attributes,
+  listeners,
   location,
   table,
   ...rest
@@ -33,8 +42,10 @@ export const MRT_GrabHandleButton = <TData extends MRT_RowData>({
       <IconButton
         aria-label={rest.title ?? localization.move}
         disableRipple
-        draggable="true"
+        ref={activatorRef}
         size="small"
+        {...attributes}
+        {...listeners}
         {...rest}
         onClick={(e) => {
           e.stopPropagation();

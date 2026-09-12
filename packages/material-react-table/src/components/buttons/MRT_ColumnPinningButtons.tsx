@@ -1,6 +1,8 @@
 import Box, { type BoxProps } from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
+import { useSelector } from '@tanstack/react-store';
+
 import {
   type MRT_Column,
   type MRT_RowData,
@@ -24,8 +26,10 @@ export const MRT_ColumnPinningButtons = <TData extends MRT_RowData>({
       localization,
     },
   } = table;
+  //not read directly - column.getIsPinned() below reads this live.
+  useSelector(table.atoms.columnPinning);
 
-  const handlePinColumn = (pinDirection: 'left' | 'right' | false) => {
+  const handlePinColumn = (pinDirection: 'end' | 'start' | false) => {
     column.pin(pinDirection);
   };
 
@@ -49,7 +53,7 @@ export const MRT_ColumnPinningButtons = <TData extends MRT_RowData>({
       ) : (
         <>
           <Tooltip title={localization.pinToLeft}>
-            <IconButton onClick={() => handlePinColumn('left')} size="small">
+            <IconButton onClick={() => handlePinColumn('start')} size="small">
               <PushPinIcon
                 style={{
                   transform: 'rotate(90deg)',
@@ -58,7 +62,7 @@ export const MRT_ColumnPinningButtons = <TData extends MRT_RowData>({
             </IconButton>
           </Tooltip>
           <Tooltip title={localization.pinToRight}>
-            <IconButton onClick={() => handlePinColumn('right')} size="small">
+            <IconButton onClick={() => handlePinColumn('end')} size="small">
               <PushPinIcon
                 style={{
                   transform: 'rotate(-90deg)',

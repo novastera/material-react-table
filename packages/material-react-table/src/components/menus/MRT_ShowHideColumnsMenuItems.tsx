@@ -1,22 +1,18 @@
-import {
-  type Dispatch,
-  type DragEvent,
-  type SetStateAction,
-  useRef,
-  useState,
-} from 'react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import Box from '@mui/material/Box';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import MenuItem, { type MenuItemProps } from '@mui/material/MenuItem';
 import Switch from '@mui/material/Switch';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
+import { useSelector } from '@tanstack/react-store';
+
 import {
   type MRT_Column,
   type MRT_RowData,
   type MRT_TableInstance,
 } from '../../types';
-import { reorderColumn } from '../../utils/column.utils';
 import { getCommonTooltipProps } from '../../utils/style.utils';
 import { MRT_ColumnPinningButtons } from '../buttons/MRT_ColumnPinningButtons';
 import { MRT_GrabHandleButton } from '../buttons/MRT_GrabHandleButton';
@@ -25,23 +21,22 @@ export interface MRT_ShowHideColumnsMenuItemsProps<TData extends MRT_RowData>
   extends MenuItemProps {
   allColumns: MRT_Column<TData>[];
   column: MRT_Column<TData>;
+  draggingColumn: MRT_Column<TData> | null;
   hoveredColumn: MRT_Column<TData> | null;
   isNestedColumns: boolean;
-  setHoveredColumn: Dispatch<SetStateAction<MRT_Column<TData> | null>>;
   table: MRT_TableInstance<TData>;
 }
 
 export const MRT_ShowHideColumnsMenuItems = <TData extends MRT_RowData>({
   allColumns,
   column,
+  draggingColumn,
   hoveredColumn,
   isNestedColumns,
-  setHoveredColumn,
   table,
   ...rest
 }: MRT_ShowHideColumnsMenuItemsProps<TData>) => {
   const {
-    getState,
     options: {
       enableColumnOrdering,
       enableColumnPinning,
@@ -49,12 +44,11 @@ export const MRT_ShowHideColumnsMenuItems = <TData extends MRT_RowData>({
       localization,
       mrtTheme: { draggingBorderColor },
     },
-    setColumnOrder,
-    setColumnPinning,
   } = table;
-  const { columnOrder } = getState();
   const { columnDef } = column;
   const { columnDefType } = columnDef;
+  //not read directly - column.getIsVisible() below reads this live.
+  useSelector(table.atoms.columnVisibility);
 
   const switchChecked = column.getIsVisible();
 
@@ -68,41 +62,21 @@ export const MRT_ShowHideColumnsMenuItems = <TData extends MRT_RowData>({
     }
   };
 
-  const menuItemRef = useRef<HTMLElement>(null);
+  const isDragging = draggingColumn?.id === column.id;
 
-  const [isDragging, setIsDragging] = useState(false);
-
-  const handleDragStart = (e: DragEvent<HTMLButtonElement>) => {
-    setIsDragging(true);
-    try {
-      e.dataTransfer.setDragImage(menuItemRef.current as HTMLElement, 0, 0);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleDragEnd = (_e: DragEvent<HTMLButtonElement>) => {
-    setIsDragging(false);
-    setHoveredColumn(null);
-    if (hoveredColumn) {
-      const reorderedColumns = reorderColumn(
-        column,
-        hoveredColumn,
-        columnOrder,
-      );
-      setColumnOrder(reorderedColumns);
-      setColumnPinning(({ left = [], right = [] }) => ({
-        left: reorderedColumns.filter((header) => left.includes(header)),
-        right: reorderedColumns.filter((header) => right.includes(header)),
-      }));
-    }
-  };
-
-  const handleDragEnter = (_e: DragEvent) => {
-    if (!isDragging && columnDef.enableColumnOrdering !== false) {
-      setHoveredColumn(column);
-    }
-  };
+  //this menu item is the dnd-kit sortable item (its own self-contained context - see
+  //MRT_ShowHideColumnsMenu.tsx, independent of the table's own useMRT_DragAndDrop.ts). Disabled
+  //for group headers/nested-column mode/no-ordering, matching the conditions that used to gate
+  //whether this item even rendered a grab handle - not gated on this specific column's own
+  //enableColumnOrdering, since a column that can't itself be dragged can still be a valid drop
+  //target for other columns (checked separately in the parent's handleDragOver).
+  const { attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition } =
+    useSortable({
+      data: { column },
+      disabled:
+        isNestedColumns || columnDefType === 'group' || !enableColumnOrdering,
+      id: column.id,
+    });
 
   if (!columnDef.header || columnDef.visibleInShowHideMenu === false) {
     return null;
@@ -112,9 +86,15 @@ export const MRT_ShowHideColumnsMenuItems = <TData extends MRT_RowData>({
     <>
       <MenuItem
         disableRipple
-        onDragEnter={handleDragEnter}
-        ref={menuItemRef as any}
+        ref={setNodeRef}
         {...rest}
+        style={{
+          //see MRT_TableBodyRow.tsx's identical comment - useSortable() only computes the
+          //drag-shift transform/transition, it doesn't apply them.
+          transform: transform ? CSS.Transform.toString(transform) : undefined,
+          transition,
+          ...rest?.style,
+        }}
         sx={[
           (theme) => ({
             alignItems: 'center',
@@ -145,8 +125,9 @@ export const MRT_ShowHideColumnsMenuItems = <TData extends MRT_RowData>({
             !isNestedColumns &&
             (columnDef.enableColumnOrdering !== false ? (
               <MRT_GrabHandleButton
-                onDragEnd={handleDragEnd}
-                onDragStart={handleDragStart}
+                activatorRef={setActivatorNodeRef}
+                attributes={attributes}
+                listeners={listeners}
                 table={table}
               />
             ) : (
@@ -161,14 +142,6 @@ export const MRT_ShowHideColumnsMenuItems = <TData extends MRT_RowData>({
           {enableHiding ? (
             <FormControlLabel
               checked={switchChecked}
-              slotProps={{
-                typography: {
-                  sx: {
-                    mb: 0,
-                    opacity: columnDefType !== 'display' ? 1 : 0.5,
-                  },
-                },
-              }}
               control={
                 <Tooltip
                   {...getCommonTooltipProps()}
@@ -180,6 +153,14 @@ export const MRT_ShowHideColumnsMenuItems = <TData extends MRT_RowData>({
               disabled={!column.getCanHide()}
               label={columnDef.header}
               onChange={() => handleToggleColumnHidden(column)}
+              slotProps={{
+                typography: {
+                  sx: {
+                    mb: 0,
+                    opacity: columnDefType !== 'display' ? 1 : 0.5,
+                  },
+                },
+              }}
             />
           ) : (
             <Typography sx={{ alignSelf: 'center' }}>
@@ -192,10 +173,10 @@ export const MRT_ShowHideColumnsMenuItems = <TData extends MRT_RowData>({
         <MRT_ShowHideColumnsMenuItems
           allColumns={allColumns}
           column={c}
+          draggingColumn={draggingColumn}
           hoveredColumn={hoveredColumn}
           isNestedColumns={isNestedColumns}
           key={`${i}-${c.id}`}
-          setHoveredColumn={setHoveredColumn}
           table={table}
         />
       ))}

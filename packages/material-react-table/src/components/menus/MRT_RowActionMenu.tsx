@@ -1,12 +1,14 @@
-import { ReactNode, useMemo, type MouseEvent } from 'react';
 import Menu, { type MenuProps } from '@mui/material/Menu';
-import { MRT_ActionMenuItem } from './MRT_ActionMenuItem';
+import { useSelector } from '@tanstack/react-store';
+import { type MouseEvent, type ReactNode } from 'react';
+
 import {
   type MRT_Row,
   type MRT_RowData,
   type MRT_TableInstance,
 } from '../../types';
 import { parseFromValuesOrFunc } from '../../utils/utils';
+import { MRT_ActionMenuItem } from './MRT_ActionMenuItem';
 
 export interface MRT_RowActionMenuProps<TData extends MRT_RowData>
   extends Partial<MenuProps> {
@@ -28,7 +30,6 @@ export const MRT_RowActionMenu = <TData extends MRT_RowData>({
   ...rest
 }: MRT_RowActionMenuProps<TData>) => {
   const {
-    getState,
     options: {
       editDisplayMode,
       enableEditing,
@@ -38,15 +39,20 @@ export const MRT_RowActionMenu = <TData extends MRT_RowData>({
       renderRowActionMenuItems,
     },
   } = table;
-  const { density } = getState();
+  const density = useSelector(table.atoms.density);
 
-  const menuItems = useMemo(() => {
+  //plain computed value (not useMemo) - the previous manual dependency array didn't match what
+  //this actually reads (enableEditing, editDisplayMode, EditIcon, localization.edit, handleEdit,
+  //setAnchorEl were used but not listed), which made React Compiler refuse to compile this
+  //component at all (category PreserveManualMemo) rather than risk a stale value. Letting the
+  //compiler infer the real dependencies itself is both correct and simpler.
+  const menuItems = (() => {
     const items: ReactNode[] = [];
     const editItem = parseFromValuesOrFunc(enableEditing, row) &&
       ['modal', 'row'].includes(editDisplayMode!) && (
         <MRT_ActionMenuItem
-          key={'edit'}
           icon={<EditIcon />}
+          key={'edit'}
           label={localization.edit}
           onClick={handleEdit}
           table={table}
@@ -61,7 +67,7 @@ export const MRT_RowActionMenu = <TData extends MRT_RowData>({
     });
     if (rowActionMenuItems?.length) items.push(...rowActionMenuItems);
     return items;
-  }, [renderRowActionMenuItems, row, staticRowIndex, table]);
+  })();
 
   if (!menuItems.length) return null;
 

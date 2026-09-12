@@ -1,6 +1,8 @@
 import Checkbox, { type CheckboxProps } from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Tooltip from '@mui/material/Tooltip';
+import { useSelector } from '@tanstack/react-store';
+
 import {
   type MRT_Column,
   type MRT_RowData,
@@ -21,10 +23,9 @@ export const MRT_FilterCheckbox = <TData extends MRT_RowData>({
   ...rest
 }: MRT_FilterCheckboxProps<TData>) => {
   const {
-    getState,
     options: { localization, muiFilterCheckboxProps },
   } = table;
-  const { density } = getState();
+  const density = useSelector(table.atoms.density);
   const { columnDef } = column;
 
   const {

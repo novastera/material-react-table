@@ -2,6 +2,8 @@ import Collapse from '@mui/material/Collapse';
 import LinearProgress, {
   type LinearProgressProps,
 } from '@mui/material/LinearProgress';
+import { useSelector } from '@tanstack/react-store';
+
 import { type MRT_RowData, type MRT_TableInstance } from '../../types';
 import { parseFromValuesOrFunc } from '../../utils/utils';
 
@@ -17,10 +19,10 @@ export const MRT_LinearProgressBar = <TData extends MRT_RowData>({
   ...rest
 }: MRT_LinearProgressBarProps<TData>) => {
   const {
-    getState,
     options: { muiLinearProgressProps },
   } = table;
-  const { isSaving, showProgressBars } = getState();
+  const isSaving = useSelector(table.atoms.isSaving);
+  const showProgressBars = useSelector(table.atoms.showProgressBars);
 
   const linearProgressProps = {
     ...parseFromValuesOrFunc(muiLinearProgressProps, {

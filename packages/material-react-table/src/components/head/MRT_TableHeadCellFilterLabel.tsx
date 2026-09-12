@@ -22,7 +22,9 @@ export interface MRT_TableHeadCellFilterLabelProps<TData extends MRT_RowData>
   table: MRT_TableInstance<TData>;
 }
 
-export const MRT_TableHeadCellFilterLabel = <TData extends MRT_RowData = {}>({
+export const MRT_TableHeadCellFilterLabel = <
+  TData extends MRT_RowData = MRT_RowData,
+>({
   header,
   table,
   ...rest

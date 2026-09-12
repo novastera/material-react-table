@@ -1,19 +1,8 @@
-import { useId, useMemo } from 'react';
-import {
-  getCoreRowModel,
-  getExpandedRowModel,
-  getFacetedMinMaxValues,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getGroupedRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-} from '@tanstack/react-table';
+import { useId, useState } from 'react';
 import { useTheme } from '@mui/material/styles';
 import { MRT_AggregationFns } from '../fns/aggregationFns';
 import { MRT_FilterFns } from '../fns/filterFns';
-import { MRT_SortingFns } from '../fns/sortingFns';
+import { MRT_SortFns } from '../fns/sortingFns';
 import { MRT_Default_Icons } from '../icons';
 import { MRT_Localization_EN } from '../locales/en';
 import {
@@ -48,14 +37,14 @@ export const MRT_DefaultDisplayColumn = {
 export const useMRT_TableOptions: <TData extends MRT_RowData>(
   tableOptions: MRT_TableOptions<TData>,
 ) => MRT_DefinedTableOptions<TData> = <TData extends MRT_RowData>({
-  aggregationFns,
+  aggregationFns: aggregationFnsProp,
   autoResetExpanded = false,
   columnFilterDisplayMode = 'subheader',
-  columnResizeDirection,
+  columnResizeDirection: columnResizeDirectionProp,
   columnResizeMode = 'onChange',
   createDisplayMode = 'modal',
-  defaultColumn,
-  defaultDisplayColumn,
+  defaultColumn: defaultColumnProp,
+  defaultDisplayColumn: defaultDisplayColumnProp,
   editDisplayMode = 'modal',
   enableBatchRowSelection = true,
   enableBottomToolbar = true,
@@ -64,7 +53,7 @@ export const useMRT_TableOptions: <TData extends MRT_RowData>(
   enableColumnOrdering = false,
   enableColumnPinning = false,
   enableColumnResizing = false,
-  enableColumnVirtualization,
+  enableColumnVirtualization: enableColumnVirtualizationProp,
   enableDensityToggle = true,
   enableExpandAll = true,
   enableExpanding,
@@ -82,24 +71,24 @@ export const useMRT_TableOptions: <TData extends MRT_RowData>(
   enablePagination = true,
   enableRowPinning = false,
   enableRowSelection = false,
-  enableRowVirtualization,
+  enableRowVirtualization: enableRowVirtualizationProp,
   enableSelectAll = true,
   enableSorting = true,
-  enableStickyHeader = false,
+  enableStickyHeader: enableStickyHeaderProp = false,
   enableTableFooter = true,
   enableTableHead = true,
   enableToolbarInternalActions = true,
   enableTopToolbar = true,
-  filterFns,
-  icons,
-  id = useId(),
-  layoutMode,
-  localization,
-  manualFiltering,
-  manualGrouping,
-  manualPagination,
-  manualSorting,
-  mrtTheme,
+  filterFns: filterFnsProp,
+  icons: iconsProp,
+  id: idProp,
+  layoutMode: layoutModeProp,
+  localization: localizationProp,
+  manualFiltering: manualFilteringProp,
+  manualGrouping: manualGroupingProp,
+  manualPagination: manualPaginationProp,
+  manualSorting: manualSortingProp,
+  mrtTheme: mrtThemeProp,
   paginationDisplayMode = 'default',
   positionActionsColumn = 'first',
   positionCreatingRow = 'top',
@@ -111,49 +100,43 @@ export const useMRT_TableOptions: <TData extends MRT_RowData>(
   rowNumberDisplayMode = 'static',
   rowPinningDisplayMode = 'sticky',
   selectAllMode = 'page',
-  sortingFns,
+  sortFns: sortFnsProp,
   ...rest
 }: MRT_TableOptions<TData>) => {
   const theme = useTheme();
+  const generatedId = useId();
+  const id = idProp ?? generatedId;
 
-  icons = useMemo(() => ({ ...MRT_Default_Icons, ...icons }), [icons]);
-  localization = useMemo(
+  //React Compiler doesn't yet support reassigning a destructured parameter directly (hits a
+  //"Support destructuring of context variables" Todo internally) - every option that needs
+  //further resolution below is destructured under a `...Prop` name instead, then resolved into
+  //a plain local const/let, so the compiler can actually optimize this hook.
+  const icons = { ...MRT_Default_Icons, ...iconsProp };
+  const localization = { ...MRT_Localization_EN, ...localizationProp };
+  const mrtTheme = getMRTTheme(mrtThemeProp, theme);
+  const aggregationFns = { ...MRT_AggregationFns, ...aggregationFnsProp };
+  const filterFns = { ...MRT_FilterFns, ...filterFnsProp };
+  const sortFns = { ...MRT_SortFns, ...sortFnsProp };
+  const defaultColumn = { ...MRT_DefaultColumn, ...defaultColumnProp };
+  const defaultDisplayColumn = {
+    ...MRT_DefaultDisplayColumn,
+    ...defaultDisplayColumnProp,
+  };
+  //cannot be changed after initialization - useState's lazy initializer only ever runs once
+  //(on mount), so this stays frozen even if a consumer's enableColumnVirtualization/
+  //enableRowVirtualization option changes on a later render
+  const [{ enableColumnVirtualization, enableRowVirtualization }] = useState(
     () => ({
-      ...MRT_Localization_EN,
-      ...localization,
+      enableColumnVirtualization: enableColumnVirtualizationProp,
+      enableRowVirtualization: enableRowVirtualizationProp,
     }),
-    [localization],
-  );
-  mrtTheme = useMemo(() => getMRTTheme(mrtTheme, theme), [mrtTheme, theme]);
-  aggregationFns = useMemo(
-    () => ({ ...MRT_AggregationFns, ...aggregationFns }),
-    [],
-  );
-  filterFns = useMemo(() => ({ ...MRT_FilterFns, ...filterFns }), []);
-  sortingFns = useMemo(() => ({ ...MRT_SortingFns, ...sortingFns }), []);
-  defaultColumn = useMemo(
-    () => ({ ...MRT_DefaultColumn, ...defaultColumn }),
-    [defaultColumn],
-  );
-  defaultDisplayColumn = useMemo(
-    () => ({
-      ...MRT_DefaultDisplayColumn,
-      ...defaultDisplayColumn,
-    }),
-    [defaultDisplayColumn],
-  );
-  //cannot be changed after initialization
-  [enableColumnVirtualization, enableRowVirtualization] = useMemo(
-    () => [enableColumnVirtualization, enableRowVirtualization],
-    [],
   );
 
-  if (!columnResizeDirection) {
-    columnResizeDirection = theme.direction || 'ltr';
-  }
+  const columnResizeDirection =
+    columnResizeDirectionProp || theme.direction || 'ltr';
 
-  layoutMode =
-    layoutMode || (enableColumnResizing ? 'grid-no-grow' : 'semantic');
+  let layoutMode =
+    layoutModeProp || (enableColumnResizing ? 'grid-no-grow' : 'semantic');
   if (
     layoutMode === 'semantic' &&
     (enableRowVirtualization || enableColumnVirtualization)
@@ -161,14 +144,18 @@ export const useMRT_TableOptions: <TData extends MRT_RowData>(
     layoutMode = 'grid';
   }
 
-  if (enableRowVirtualization) {
-    enableStickyHeader = true;
-  }
+  const enableStickyHeader = enableRowVirtualization
+    ? true
+    : enableStickyHeaderProp;
 
+  let manualPagination = manualPaginationProp;
   if (enablePagination === false && manualPagination === undefined) {
     manualPagination = true;
   }
 
+  let manualFiltering = manualFilteringProp;
+  let manualGrouping = manualGroupingProp;
+  let manualSorting = manualSortingProp;
   if (!rest.data?.length) {
     manualFiltering = true;
     manualGrouping = true;
@@ -220,29 +207,18 @@ export const useMRT_TableOptions: <TData extends MRT_RowData>(
     enableToolbarInternalActions,
     enableTopToolbar,
     filterFns,
-    getCoreRowModel: getCoreRowModel(),
-    getExpandedRowModel:
-      enableExpanding || enableGrouping ? getExpandedRowModel() : undefined,
-    getFacetedMinMaxValues: enableFacetedValues
-      ? getFacetedMinMaxValues()
-      : undefined,
-    getFacetedRowModel: enableFacetedValues ? getFacetedRowModel() : undefined,
-    getFacetedUniqueValues: enableFacetedValues
-      ? getFacetedUniqueValues()
-      : undefined,
-    getFilteredRowModel:
-      (enableColumnFilters || enableGlobalFilter || enableFilters) &&
-      !manualFiltering
-        ? getFilteredRowModel()
-        : undefined,
-    getGroupedRowModel:
-      enableGrouping && !manualGrouping ? getGroupedRowModel() : undefined,
-    getPaginationRowModel:
-      enablePagination && !manualPagination
-        ? getPaginationRowModel()
-        : undefined,
-    getSortedRowModel:
-      enableSorting && !manualSorting ? getSortedRowModel() : undefined,
+    //without this, row.toggleExpanded()/getCanExpand() only ever recognize hierarchical rows
+    //(subRows.length) - table-core's row_getCanExpand has no notion of renderDetailPanel, so a
+    //flat table using ONLY renderDetailPanel (no subRows) renders an enabled-looking Expand
+    //button (MRT_ExpandButton.tsx's own `disabled` calc already accounts for detailPanel) whose
+    //click silently no-ops, because row_toggleExpanded's own `!row_getCanExpand(row)` guard
+    //(rowExpandingFeature.utils.js) still says false. Consumer-provided getRowCanExpand always
+    //wins (spread via ...rest below, after this).
+    getRowCanExpand:
+      rest.getRowCanExpand ??
+      ((row) =>
+        (enableExpanding ?? true) &&
+        (!!rest.renderDetailPanel || !!row.subRows?.length)),
     getSubRows: (row) => row?.subRows,
     icons,
     id,
@@ -264,7 +240,7 @@ export const useMRT_TableOptions: <TData extends MRT_RowData>(
     rowNumberDisplayMode,
     rowPinningDisplayMode,
     selectAllMode,
-    sortingFns,
+    sortFns,
     ...rest,
   } as MRT_DefinedTableOptions<TData>;
 };

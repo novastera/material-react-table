@@ -3,6 +3,8 @@ import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
+import { useSelector } from '@tanstack/react-store';
+
 import {
   type MRT_Row,
   type MRT_RowData,
@@ -23,7 +25,6 @@ export const MRT_EditActionButtons = <TData extends MRT_RowData>({
   ...rest
 }: MRT_EditActionButtonsProps<TData>) => {
   const {
-    getState,
     options: {
       icons: { CancelIcon, SaveIcon },
       localization,
@@ -35,8 +36,14 @@ export const MRT_EditActionButtons = <TData extends MRT_RowData>({
     refs: { editInputRefs },
     setCreatingRow,
     setEditingRow,
+    setEditingRowValuesCache,
   } = table;
-  const { creatingRow, editingRow, isSaving } = getState();
+  const creatingRow = useSelector(table.atoms.creatingRow);
+  const editingRow = useSelector(table.atoms.editingRow);
+  const editingRowValuesCache = useSelector(
+    table.atoms.editingRowValuesCache,
+  );
+  const isSaving = useSelector(table.atoms.isSaving);
 
   const isCreating = creatingRow?.id === row.id;
   const isEditing = editingRow?.id === row.id;
@@ -49,35 +56,33 @@ export const MRT_EditActionButtons = <TData extends MRT_RowData>({
       onEditingRowCancel?.({ row, table });
       setEditingRow(null);
     }
-    row._valuesCache = {} as any; //reset values cache
+    setEditingRowValuesCache((prev) => ({ ...prev, [row.id]: {} })); //reset values cache
   };
 
   const handleSubmitRow = () => {
+    const values = { ...editingRowValuesCache[row.id] };
     //look for auto-filled input values
     Object.values(editInputRefs.current ?? {})
       .filter((inputRef) => row.id === inputRef?.name?.split('_')?.[0])
       ?.forEach((input) => {
-        if (
-          input.value !== undefined &&
-          Object.hasOwn(row?._valuesCache as object, input.name)
-        ) {
-          // @ts-expect-error
-          row._valuesCache[input.name] = input.value;
+        if (input.value !== undefined && Object.hasOwn(values, input.name)) {
+          values[input.name] = input.value;
         }
       });
+    setEditingRowValuesCache((prev) => ({ ...prev, [row.id]: values }));
     if (isCreating)
       onCreatingRowSave?.({
         exitCreatingMode: () => setCreatingRow(null),
         row,
         table,
-        values: row._valuesCache,
+        values: values as any,
       });
     else if (isEditing) {
       onEditingRowSave?.({
         exitEditingMode: () => setEditingRow(null),
         row,
         table,
-        values: row?._valuesCache,
+        values: values as any,
       });
     }
   };

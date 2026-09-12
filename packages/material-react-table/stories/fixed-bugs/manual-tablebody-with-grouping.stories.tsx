@@ -79,10 +79,20 @@ export const ManualTableBodyWithGrouping = () => {
                   <TableCell key={header.id}>
                     {header.isPlaceholder
                       ? null
-                      : flexRender(
+                      : // Note: table.getState()/setDensity()/etc. now work correctly through
+                        // header.getContext().table on its own (they're a real TanStack v9
+                        // feature registered on the actual table instance, not just this
+                        // render's useTable() wrapper - see mrtStateFeature.ts). The explicit
+                        // `table` override below is only still needed for the couple of fields
+                        // that remain plain useState for other reasons (columnFilterFns,
+                        // globalFilterFn) and pure consumer-passthrough fields with no internal
+                        // state at all (isLoading, showSkeletons, isSaving, ...) - kept here as
+                        // the more-correct default rather than because it's required to avoid a
+                        // crash.
+                        flexRender(
                           header.column.columnDef.Header ??
                             header.column.columnDef.header,
-                          header.getContext(),
+                          { ...header.getContext(), table },
                         )}
                   </TableCell>
                 ))}

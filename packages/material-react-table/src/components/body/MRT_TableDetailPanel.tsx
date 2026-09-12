@@ -1,7 +1,10 @@
-import { type RefObject } from 'react';
 import Collapse from '@mui/material/Collapse';
 import TableCell, { type TableCellProps } from '@mui/material/TableCell';
 import TableRow from '@mui/material/TableRow';
+import { useSelector } from '@tanstack/react-store';
+import { type RefObject } from 'react';
+
+import { useMRT_ObservedElementSize } from '../../hooks/useMRT_ObservedElementSize';
 import {
   type MRT_Row,
   type MRT_RowData,
@@ -31,7 +34,6 @@ export const MRT_TableDetailPanel = <TData extends MRT_RowData>({
   ...rest
 }: MRT_TableDetailPanelProps<TData>) => {
   const {
-    getState,
     getVisibleLeafColumns,
     options: {
       layoutMode,
@@ -41,7 +43,13 @@ export const MRT_TableDetailPanel = <TData extends MRT_RowData>({
       renderDetailPanel,
     },
   } = table;
-  const { isLoading } = getState();
+  const isLoading = useSelector(table.atoms.isLoading);
+  //not read directly - getVisibleLeafColumns().length below (colSpan) reads this live. Same
+  //defect shape as MRT_TableHead.tsx/MRT_TableBody.tsx's identical colSpan pattern - see
+  //migration-render.md §13.
+  useSelector(table.atoms.columnVisibility);
+  //not read directly - row.getIsExpanded() below reads this live.
+  useSelector(table.atoms.expanded);
 
   const tableRowProps = parseFromValuesOrFunc(muiTableBodyRowProps, {
     isDetailPanel: true,
@@ -60,6 +68,11 @@ export const MRT_TableDetailPanel = <TData extends MRT_RowData>({
 
   const DetailPanel = !isLoading && renderDetailPanel?.({ row, table });
 
+  const parentRowHeight = useMRT_ObservedElementSize(
+    parentRowRef,
+    (el) => el.getBoundingClientRect().height,
+  );
+
   return (
     <TableRow
       className="Mui-TableBodyCell-DetailPanel"
@@ -74,9 +87,7 @@ export const MRT_TableDetailPanel = <TData extends MRT_RowData>({
         {
           display: layoutMode?.startsWith('grid') ? 'flex' : undefined,
           position: virtualRow ? 'absolute' : undefined,
-          top: virtualRow
-            ? `${parentRowRef.current?.getBoundingClientRect()?.height}px`
-            : undefined,
+          top: virtualRow ? `${parentRowHeight}px` : undefined,
           transform: virtualRow
             ? `translateY(${virtualRow?.start}px)`
             : undefined,

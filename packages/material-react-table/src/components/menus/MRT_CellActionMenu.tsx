@@ -1,8 +1,15 @@
 import Menu, { type MenuProps } from '@mui/material/Menu';
-import { MRT_ActionMenuItem } from './MRT_ActionMenuItem';
-import { type MRT_RowData, type MRT_TableInstance } from '../../types';
+import { useSelector } from '@tanstack/react-store';
+import { useLayoutEffect, useState } from 'react';
+
+import {
+  type MRT_Cell,
+  type MRT_RowData,
+  type MRT_TableInstance,
+} from '../../types';
 import { openEditingCell } from '../../utils/cell.utils';
 import { parseFromValuesOrFunc } from '../../utils/utils';
+import { MRT_ActionMenuItem } from './MRT_ActionMenuItem';
 
 export interface MRT_CellActionMenuProps<TData extends MRT_RowData>
   extends Partial<MenuProps> {
@@ -14,7 +21,6 @@ export const MRT_CellActionMenu = <TData extends MRT_RowData>({
   ...rest
 }: MRT_CellActionMenuProps<TData>) => {
   const {
-    getState,
     options: {
       editDisplayMode,
       enableClickToCopy,
@@ -26,16 +32,31 @@ export const MRT_CellActionMenu = <TData extends MRT_RowData>({
     },
     refs: { actionCellRef },
   } = table;
-  const { actionCell, density } = getState();
+  //cast needed because table.atoms.actionCell's static type is the minimal `{ id }` shape (see
+  //mrtStateFeature.ts) - at runtime this atom always holds a real MRT_Cell<TData> whenever this
+  //menu is actually rendered (it's only mounted while a cell's action menu is open).
+  const actionCell = useSelector(table.atoms.actionCell) as MRT_Cell<TData> | null;
+  const density = useSelector(table.atoms.density);
   const cell = actionCell!;
   const { row } = cell;
   const { column } = cell;
   const { columnDef } = column;
 
+  //actionCellRef is a plain table-level ref (not React state) so the cell that opened this menu
+  //can hand its anchor DOM node off without prop-drilling a setter through the whole cell tree.
+  //Reading ref.current directly during render violates Rules of React (React Compiler rejects it
+  //outright: "Cannot access refs during render"), so it's synced into local state via
+  //useLayoutEffect instead of read inline - this component only mounts while a cell's action menu
+  //is open (see MRT_TableContainer.tsx), so the effect fires once per menu-open with the freshest
+  //anchor, synchronously before the browser paints (no visible flash of a menu with no anchor).
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    setAnchorEl(actionCellRef.current);
+  }, [actionCellRef]);
+
   const handleClose = (event?: any) => {
     event?.stopPropagation();
     table.setActionCell(null);
-    actionCellRef.current = null;
   };
 
   const internalMenuItems = [
@@ -84,11 +105,11 @@ export const MRT_CellActionMenu = <TData extends MRT_RowData>({
   return (
     (!!menuItems?.length || !!internalMenuItems?.length) && (
       <Menu
-        anchorEl={actionCellRef.current}
+        anchorEl={anchorEl}
         disableScrollLock
         onClick={(event) => event.stopPropagation()}
         onClose={handleClose}
-        open={!!cell}
+        open={!!anchorEl}
         slotProps={{
           list: {
             dense: density === 'compact',

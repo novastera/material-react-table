@@ -1,44 +1,9 @@
 import {
-  type Dispatch,
-  type ReactNode,
-  type RefObject,
-  type SetStateAction,
-} from 'react';
-import {
-  type AccessorFn,
-  type AggregationFn,
-  type Cell,
-  type Column,
-  type ColumnDef,
-  type ColumnFiltersState,
-  type ColumnOrderState,
-  type ColumnPinningState,
-  type ColumnSizingInfoState,
-  type ColumnSizingState,
-  type DeepKeys,
-  type DeepValue,
-  type ExpandedState,
-  type FilterFn,
-  type GroupingState,
-  type Header,
-  type HeaderGroup,
-  type OnChangeFn,
-  type PaginationState,
-  type Row,
-  type RowSelectionState,
-  type SortingFn,
-  type SortingState,
-  type Table,
-  type TableOptions,
-  type TableState,
-  type Updater,
-  type VisibilityState,
-} from '@tanstack/react-table';
-import {
-  type VirtualItem,
-  type Virtualizer,
-  type VirtualizerOptions,
-} from '@tanstack/react-virtual';
+  type DragEndEvent,
+  type DraggableAttributes,
+  type DraggableSyntheticListeners,
+  type DragStartEvent,
+} from '@dnd-kit/core';
 import { type AlertProps } from '@mui/material/Alert';
 import { type AutocompleteProps } from '@mui/material/Autocomplete';
 import { type BoxProps } from '@mui/material/Box';
@@ -63,33 +28,54 @@ import { type TableFooterProps } from '@mui/material/TableFooter';
 import { type TableHeadProps } from '@mui/material/TableHead';
 import { type TableRowProps } from '@mui/material/TableRow';
 import { type TextFieldProps as MuiTextFieldProps } from '@mui/material/TextField';
+import {
+  type AccessorFn,
+  type AggregationFnDef,
+  type AppReactTable,
+  type Cell,
+  type Column,
+  type ColumnDef,
+  type ColumnFiltersState,
+  type ColumnOrderState,
+  type ColumnPinningState,
+  type columnResizingState,
+  type ColumnSizingState,
+  type ColumnVisibilityState,
+  type DeepKeys,
+  type DeepValue,
+  type ExpandedState,
+  type FilterFn,
+  type GroupingState,
+  type Header,
+  type HeaderGroup,
+  type OnChangeFn,
+  type PaginationState,
+  type Row,
+  type RowSelectionState,
+  type SortFn,
+  type SortingState,
+  type TableOptions,
+  type TableState,
+  type Updater,
+} from '@tanstack/react-table';
+import {
+  type VirtualItem,
+  type Virtualizer,
+  type VirtualizerOptions,
+} from '@tanstack/react-virtual';
+import {
+  type Dispatch,
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  type SetStateAction,
+} from 'react';
+
+import { type MRT_TableFeaturesType } from './utils/tableFeatures';
 
 export type DistributiveOmit<T, K extends keyof any> = T extends any
   ? Omit<T, K>
   : never;
-
-export type TextFieldProps = MuiTextFieldProps;
-import { type Theme } from '@mui/material/styles';
-import {
-  type DatePickerProps,
-  type DateTimePickerProps,
-  type TimePickerProps,
-} from '@mui/x-date-pickers';
-import { type MRT_AggregationFns } from './fns/aggregationFns';
-import { type MRT_FilterFns } from './fns/filterFns';
-import { type MRT_SortingFns } from './fns/sortingFns';
-import { type MRT_Icons } from './icons';
-
-export type { MRT_Icons };
-export type LiteralUnion<T extends U, U = string> =
-  | T
-  | (U & Record<never, never>);
-
-export type Prettify<T> = { [K in keyof T]: T[K] } & unknown;
-
-export type Xor<A, B> =
-  | Prettify<A & { [k in keyof B]?: never }>
-  | Prettify<B & { [k in keyof A]?: never }>;
 
 export type DropdownOption =
   | {
@@ -97,317 +83,51 @@ export type DropdownOption =
     value: any;
   }
   | string;
+import { type Theme } from '@mui/material/styles';
+import {
+  type DatePickerProps,
+  type DateTimePickerProps,
+  type TimePickerProps,
+} from '@mui/x-date-pickers';
 
-export type MRT_DensityState = 'comfortable' | 'compact' | 'spacious';
+import { type MRT_AggregationFns } from './fns/aggregationFns';
+import { type MRT_FilterFns } from './fns/filterFns';
+import { type MRT_SortFns } from './fns/sortingFns';
+import { type MRT_Icons } from './icons';
 
-export type MRT_ColumnFilterFnsState = Record<string, MRT_FilterOption>;
+export type { MRT_Icons };
+export type LiteralUnion<T extends U, U = string> =
+  | (Record<never, never> & U)
+  | T;
 
-export type MRT_RowData = Record<string, any>;
+export type MRT_AggregationFn<TData extends MRT_RowData> =
+  | AggregationFnDef<any, TData, any, any>
+  | MRT_AggregationOption;
 
-export type MRT_ColumnFiltersState = ColumnFiltersState;
-export type MRT_ColumnOrderState = ColumnOrderState;
-export type MRT_ColumnPinningState = ColumnPinningState;
-export type MRT_ColumnSizingInfoState = ColumnSizingInfoState;
-export type MRT_ColumnSizingState = ColumnSizingState;
-export type MRT_ExpandedState = ExpandedState;
-export type MRT_GroupingState = GroupingState;
-export type MRT_PaginationState = PaginationState;
-export type MRT_RowSelectionState = RowSelectionState;
-export type MRT_SortingState = SortingState;
-export type MRT_Updater<T> = Updater<T>;
-export type MRT_VirtualItem = VirtualItem;
-export type MRT_VisibilityState = VisibilityState;
+export type MRT_AggregationOption = keyof typeof MRT_AggregationFns & string;
 
-export type MRT_VirtualizerOptions<
-  TScrollElement extends Element | Window = Element | Window,
-  TItemElement extends Element = Element,
-> = VirtualizerOptions<TScrollElement, TItemElement>;
+export type MRT_Cell<TData extends MRT_RowData, TValue = unknown> = {
+  column: MRT_Column<TData, TValue>;
+  row: MRT_Row<TData>;
+} & Omit<
+  Cell<MRT_TableFeaturesType, TData, TValue>,
+  'column' | 'row'
+>;
 
-export type MRT_ColumnVirtualizer<
-  TScrollElement extends Element | Window = HTMLDivElement,
-  TItemElement extends Element = HTMLTableCellElement,
-> = Virtualizer<TScrollElement, TItemElement> & {
-  virtualColumns: MRT_VirtualItem[];
-  virtualPaddingLeft?: number;
-  virtualPaddingRight?: number;
-};
-
-export type MRT_RowVirtualizer<
-  TScrollElement extends Element | Window = HTMLDivElement,
-  TItemElement extends Element = HTMLTableRowElement,
-> = Virtualizer<TScrollElement, TItemElement> & {
-  virtualRows: MRT_VirtualItem[];
-};
-
-export type MRT_ColumnHelper<TData extends MRT_RowData> = {
-  accessor: <
-    TAccessor extends AccessorFn<TData> | DeepKeys<TData>,
-    TValue extends TAccessor extends AccessorFn<TData, infer TReturn>
-    ? TReturn
-    : TAccessor extends DeepKeys<TData>
-    ? DeepValue<TData, TAccessor>
-    : never,
-  >(
-    accessor: TAccessor,
-    column: MRT_DisplayColumnDef<TData, TValue>,
-  ) => MRT_ColumnDef<TData, TValue>;
-  display: (column: MRT_DisplayColumnDef<TData>) => MRT_ColumnDef<TData>;
-  group: (column: MRT_GroupColumnDef<TData>) => MRT_ColumnDef<TData>;
-};
-
-export interface MRT_Localization {
-  // language of the localization as BCP 47 language tag for number formatting
-  language: string;
-  actions: string;
-  and: string;
-  cancel: string;
-  changeFilterMode: string;
-  changeSearchMode: string;
-  clearFilter: string;
-  clearSearch: string;
-  clearSelection: string;
-  clearSort: string;
-  clickToCopy: string;
-  collapse: string;
-  collapseAll: string;
-  columnActions: string;
-  copiedToClipboard: string;
-  copy: string;
-  dropToGroupBy: string;
-  edit: string;
-  expand: string;
-  expandAll: string;
-  filterArrIncludes: string;
-  filterArrIncludesAll: string;
-  filterArrIncludesSome: string;
-  filterBetween: string;
-  filterBetweenInclusive: string;
-  filterByColumn: string;
-  filterContains: string;
-  filterEmpty: string;
-  filterEndsWith: string;
-  filterEquals: string;
-  filterEqualsString: string;
-  filterFuzzy: string;
-  filterGreaterThan: string;
-  filterGreaterThanOrEqualTo: string;
-  filterIncludesString: string;
-  filterIncludesStringSensitive: string;
-  filteringByColumn: string;
-  filterInNumberRange: string;
-  filterLessThan: string;
-  filterLessThanOrEqualTo: string;
-  filterMode: string;
-  filterNotEmpty: string;
-  filterNotEquals: string;
-  filterStartsWith: string;
-  filterWeakEquals: string;
-  goToFirstPage: string;
-  goToLastPage: string;
-  goToNextPage: string;
-  goToPreviousPage: string;
-  grab: string;
-  groupByColumn: string;
-  groupedBy: string;
-  hideAll: string;
-  hideColumn: string;
-  max: string;
-  min: string;
-  move: string;
-  noRecordsToDisplay: string;
-  noResultsFound: string;
-  of: string;
-  or: string;
-  pin: string;
-  pinToLeft: string;
-  pinToRight: string;
-  resetColumnSize: string;
-  resetOrder: string;
-  rowActions: string;
-  rowNumber: string;
-  rowNumbers: string;
-  rowsPerPage: string;
-  save: string;
-  search: string;
-  select: string;
-  selectedCountOfRowCountRowsSelected: string;
-  showAll: string;
-  showAllColumns: string;
-  showHideColumns: string;
-  showHideFilters: string;
-  showHideSearch: string;
-  sortByColumnAsc: string;
-  sortByColumnDesc: string;
-  sortedByColumnAsc: string;
-  sortedByColumnDesc: string;
-  thenBy: string;
-  toggleDensity: string;
-  toggleFullScreen: string;
-  toggleSelectAll: string;
-  toggleSelectRow: string;
-  toggleVisibility: string;
-  ungroupByColumn: string;
-  unpin: string;
-  unpinAll: string;
-}
-
-export interface MRT_Theme {
-  baseBackgroundColor: string;
-  cellNavigationOutlineColor: string;
-  draggingBorderColor: string;
-  matchHighlightColor: string;
-  menuBackgroundColor: string;
-  pinnedRowBackgroundColor: string;
-  selectedRowBackgroundColor: string;
-}
-
-export interface MRT_RowModel<TData extends MRT_RowData> {
-  flatRows: MRT_Row<TData>[];
-  rows: MRT_Row<TData>[];
-  rowsById: { [key: string]: MRT_Row<TData> };
-}
-
-export type MRT_TableInstance<TData extends MRT_RowData> = Omit<
-  Table<TData>,
-  | 'getAllColumns'
-  | 'getAllFlatColumns'
-  | 'getAllLeafColumns'
-  | 'getBottomRows'
-  | 'getCenterLeafColumns'
-  | 'getCenterRows'
-  | 'getColumn'
-  | 'getExpandedRowModel'
-  | 'getFlatHeaders'
-  | 'getFooterGroups'
-  | 'getHeaderGroups'
-  | 'getLeafHeaders'
-  | 'getLeftLeafColumns'
-  | 'getPaginationRowModel'
-  | 'getPreFilteredRowModel'
-  | 'getPrePaginationRowModel'
-  | 'getRightLeafColumns'
-  | 'getRowModel'
-  | 'getSelectedRowModel'
-  | 'getState'
-  | 'getTopRows'
-  | 'options'
-> & {
-  getAllColumns: () => MRT_Column<TData>[];
-  getAllFlatColumns: () => MRT_Column<TData>[];
-  getAllLeafColumns: () => MRT_Column<TData>[];
-  getBottomRows: () => MRT_Row<TData>[];
-  getCenterLeafColumns: () => MRT_Column<TData>[];
-  getCenterRows: () => MRT_Row<TData>[];
-  getColumn: (columnId: string) => MRT_Column<TData>;
-  getExpandedRowModel: () => MRT_RowModel<TData>;
-  getFlatHeaders: () => MRT_Header<TData>[];
-  getFooterGroups: () => MRT_HeaderGroup<TData>[];
-  getHeaderGroups: () => MRT_HeaderGroup<TData>[];
-  getLeafHeaders: () => MRT_Header<TData>[];
-  getLeftLeafColumns: () => MRT_Column<TData>[];
-  getPaginationRowModel: () => MRT_RowModel<TData>;
-  getPreFilteredRowModel: () => MRT_RowModel<TData>;
-  getPrePaginationRowModel: () => MRT_RowModel<TData>;
-  getRightLeafColumns: () => MRT_Column<TData>[];
-  getRowModel: () => MRT_RowModel<TData>;
-  getSelectedRowModel: () => MRT_RowModel<TData>;
-  getState: () => MRT_TableState<TData>;
-  getTopRows: () => MRT_Row<TData>[];
-  options: MRT_StatefulTableOptions<TData>;
-  refs: {
-    actionCellRef: RefObject<HTMLTableCellElement | null>;
-    bottomToolbarRef: RefObject<HTMLDivElement | null>;
-    editInputRefs: RefObject<Record<string, HTMLInputElement> | null>;
-    filterInputRefs: RefObject<Record<string, HTMLInputElement> | null>;
-    lastSelectedRowId: RefObject<null | string>;
-    searchInputRef: RefObject<HTMLInputElement | null>;
-    tableContainerRef: RefObject<HTMLDivElement | null>;
-    tableFooterRef: RefObject<HTMLTableSectionElement | null>;
-    tableHeadCellRefs: RefObject<Record<string, HTMLTableCellElement> | null>;
-    tableHeadRef: RefObject<HTMLTableSectionElement | null>;
-    tablePaperRef: RefObject<HTMLDivElement | null>;
-    topToolbarRef: RefObject<HTMLDivElement | null>;
-  };
-  setActionCell: Dispatch<SetStateAction<MRT_Cell<TData> | null>>;
-  setColumnFilterFns: Dispatch<SetStateAction<MRT_ColumnFilterFnsState>>;
-  setCreatingRow: Dispatch<SetStateAction<MRT_Row<TData> | null | true>>;
-  setDensity: Dispatch<SetStateAction<MRT_DensityState>>;
-  setDraggingColumn: Dispatch<SetStateAction<MRT_Column<TData> | null>>;
-  setDraggingRow: Dispatch<SetStateAction<MRT_Row<TData> | null>>;
-  setEditingCell: Dispatch<SetStateAction<MRT_Cell<TData> | null>>;
-  setEditingRow: Dispatch<SetStateAction<MRT_Row<TData> | null>>;
-  setGlobalFilterFn: Dispatch<SetStateAction<MRT_FilterOption>>;
-  setHoveredColumn: Dispatch<SetStateAction<Partial<MRT_Column<TData>> | null>>;
-  setHoveredRow: Dispatch<SetStateAction<Partial<MRT_Row<TData>> | null>>;
-  setIsFullScreen: Dispatch<SetStateAction<boolean>>;
-  setShowAlertBanner: Dispatch<SetStateAction<boolean>>;
-  setShowColumnFilters: Dispatch<SetStateAction<boolean>>;
-  setShowGlobalFilter: Dispatch<SetStateAction<boolean>>;
-  setShowToolbarDropZone: Dispatch<SetStateAction<boolean>>;
-};
-
-export type MRT_DefinedTableOptions<TData extends MRT_RowData> = Omit<
-  MRT_TableOptions<TData>,
-  'icons' | 'localization' | 'mrtTheme'
-> & {
-  icons: MRT_Icons;
-  localization: MRT_Localization;
-  mrtTheme: Required<MRT_Theme>;
-};
-
-export type MRT_StatefulTableOptions<TData extends MRT_RowData> =
-  MRT_DefinedTableOptions<TData> & {
-    state: Pick<
-      MRT_TableState<TData>,
-      | 'columnFilterFns'
-      | 'columnOrder'
-      | 'columnSizingInfo'
-      | 'creatingRow'
-      | 'density'
-      | 'draggingColumn'
-      | 'draggingRow'
-      | 'editingCell'
-      | 'editingRow'
-      | 'globalFilterFn'
-      | 'grouping'
-      | 'hoveredColumn'
-      | 'hoveredRow'
-      | 'isFullScreen'
-      | 'pagination'
-      | 'showAlertBanner'
-      | 'showColumnFilters'
-      | 'showGlobalFilter'
-      | 'showToolbarDropZone'
-    >;
-  };
-
-export interface MRT_TableState<TData extends MRT_RowData> extends TableState {
-  actionCell?: MRT_Cell<TData> | null;
-  columnFilterFns: MRT_ColumnFilterFnsState;
-  creatingRow: MRT_Row<TData> | null;
-  density: MRT_DensityState;
-  draggingColumn: MRT_Column<TData> | null;
-  draggingRow: MRT_Row<TData> | null;
-  editingCell: MRT_Cell<TData> | null;
-  editingRow: MRT_Row<TData> | null;
-  globalFilterFn: MRT_FilterOption;
-  hoveredColumn: Partial<MRT_Column<TData>> | null;
-  hoveredRow: Partial<MRT_Row<TData>> | null;
-  isFullScreen: boolean;
-  isLoading: boolean;
-  isSaving: boolean;
-  showAlertBanner: boolean;
-  showColumnFilters: boolean;
-  showGlobalFilter: boolean;
-  showLoadingOverlay: boolean;
-  showProgressBars: boolean;
-  showSkeletons: boolean;
-  showToolbarDropZone: boolean;
-}
+export type MRT_Column<TData extends MRT_RowData, TValue = unknown> = {
+  columnDef: MRT_DefinedColumnDef<TData, TValue>;
+  columns?: MRT_Column<TData, TValue>[];
+  filterFn?: MRT_FilterFn<TData>;
+  footer: string;
+  header: string;
+} & Omit<
+  Column<MRT_TableFeaturesType, TData, TValue>,
+  'columnDef' | 'columns' | 'filterFn' | 'footer' | 'header'
+>;
 
 export interface MRT_ColumnDef<TData extends MRT_RowData, TValue = unknown>
   extends Omit<
-    ColumnDef<TData, TValue>,
+    ColumnDef<MRT_TableFeaturesType, TData, TValue>,
     | 'accessorKey'
     | 'aggregatedCell'
     | 'aggregationFn'
@@ -417,7 +137,7 @@ export interface MRT_ColumnDef<TData extends MRT_RowData, TValue = unknown>
     | 'footer'
     | 'header'
     | 'id'
-    | 'sortingFn'
+    | 'sortFn'
   > {
   /**
    * Either an `accessorKey` or a combination of an `accessorFn` and `id` are required for a data column definition.
@@ -434,14 +154,14 @@ export interface MRT_ColumnDef<TData extends MRT_RowData, TValue = unknown>
    * @example accessorKey: 'username' //simple
    * @example accessorKey: 'name.firstName' //deep key dot notation
    */
-  accessorKey?: DeepKeys<TData> | (string & {});
+  accessorKey?: ({} & string) | DeepKeys<TData>;
   AggregatedCell?: (props: {
     cell: MRT_Cell<TData, TValue>;
     column: MRT_Column<TData, TValue>;
     row: MRT_Row<TData>;
-    table: MRT_TableInstance<TData>;
     staticColumnIndex?: number;
     staticRowIndex?: number;
+    table: MRT_TableInstance<TData>;
   }) => ReactNode;
   aggregationFn?: Array<MRT_AggregationFn<TData>> | MRT_AggregationFn<TData>;
   Cell?: (props: {
@@ -449,6 +169,7 @@ export interface MRT_ColumnDef<TData extends MRT_RowData, TValue = unknown>
     column: MRT_Column<TData, TValue>;
     renderedCellValue: ReactNode;
     row: MRT_Row<TData>;
+    rowDragHandleProps?: MRT_RowDragHandleProps;
     rowRef?: RefObject<HTMLTableRowElement | null>;
     staticColumnIndex?: number;
     staticRowIndex?: number;
@@ -464,7 +185,7 @@ export interface MRT_ColumnDef<TData extends MRT_RowData, TValue = unknown>
    */
   columnDefType?: 'data' | 'display' | 'group';
   columnFilterModeOptions?: Array<
-    LiteralUnion<string & MRT_FilterOption>
+    LiteralUnion<MRT_FilterOption & string>
   > | null;
   columns?: MRT_ColumnDef<TData, TValue>[];
   Edit?: (props: {
@@ -503,17 +224,17 @@ export interface MRT_ColumnDef<TData extends MRT_RowData, TValue = unknown>
   filterVariant?:
   | 'autocomplete'
   | 'checkbox'
-  | 'date'
   | 'date-range'
-  | 'datetime'
+  | 'date'
   | 'datetime-range'
+  | 'datetime'
   | 'multi-select'
-  | 'range'
   | 'range-slider'
+  | 'range'
   | 'select'
   | 'text'
-  | 'time'
-  | 'time-range';
+  | 'time-range'
+  | 'time';
   /**
    * footer must be a string. If you want custom JSX to render the footer, you can also specify a `Footer` option. (Capital F)
    */
@@ -529,9 +250,9 @@ export interface MRT_ColumnDef<TData extends MRT_RowData, TValue = unknown>
     cell: MRT_Cell<TData, TValue>;
     column: MRT_Column<TData, TValue>;
     row: MRT_Row<TData>;
-    table: MRT_TableInstance<TData>;
     staticColumnIndex?: number;
     staticRowIndex?: number;
+    table: MRT_TableInstance<TData>;
   }) => ReactNode;
   /**
    * If `layoutMode` is `'grid'` or `'grid-no-grow'`, you can specify the flex grow value for individual columns to still grow and take up remaining space, or set to `false`/0 to not grow.
@@ -557,7 +278,7 @@ export interface MRT_ColumnDef<TData extends MRT_RowData, TValue = unknown>
    *
    * @default gets set to the same value as `accessorKey` by default
    */
-  id?: LiteralUnion<string & keyof TData>;
+  id?: LiteralUnion<keyof TData & string>;
   muiColumnActionsButtonProps?:
   | ((props: {
     column: MRT_Column<TData>;
@@ -568,8 +289,8 @@ export interface MRT_ColumnDef<TData extends MRT_RowData, TValue = unknown>
   | ((props: {
     column: MRT_Column<TData>;
     table: MRT_TableInstance<TData>;
-  }) => IconButtonProps)
-  | IconButtonProps;
+  }) => MRT_GrabHandleIconButtonProps)
+  | MRT_GrabHandleIconButtonProps;
   muiCopyButtonProps?:
   | ((props: {
     cell: MRT_Cell<TData, TValue>;
@@ -680,110 +401,64 @@ export interface MRT_ColumnDef<TData extends MRT_RowData, TValue = unknown>
     onSelectFilterMode: (filterMode: MRT_FilterOption) => void;
     table: MRT_TableInstance<TData>;
   }) => ReactNode[];
-  sortingFn?: MRT_SortingFn<TData>;
+  sortFn?: MRT_SortFn<TData>;
   visibleInShowHideMenu?: boolean;
 }
 
+export type MRT_ColumnFilterFnsState = Record<string, MRT_FilterOption>;
+
+export type MRT_ColumnFiltersState = ColumnFiltersState;
+
+export type MRT_ColumnHelper<TData extends MRT_RowData> = {
+  accessor: <
+    TAccessor extends AccessorFn<TData> | DeepKeys<TData>,
+    TValue extends TAccessor extends AccessorFn<TData, infer TReturn>
+    ? TReturn
+    : TAccessor extends DeepKeys<TData>
+    ? DeepValue<TData, TAccessor>
+    : never,
+  >(
+    accessor: TAccessor,
+    column: MRT_DisplayColumnDef<TData, TValue>,
+  ) => MRT_ColumnDef<TData, TValue>;
+  display: (column: MRT_DisplayColumnDef<TData>) => MRT_ColumnDef<TData>;
+  group: (column: MRT_GroupColumnDef<TData>) => MRT_ColumnDef<TData>;
+};
+
+export type MRT_ColumnOrderState = ColumnOrderState;
+
+export type MRT_ColumnPinningState = ColumnPinningState;
+export type MRT_ColumnResizingState = columnResizingState;
+export type MRT_ColumnSizingState = ColumnSizingState;
+export type MRT_ColumnVirtualizer<
+  TScrollElement extends Element | Window = HTMLDivElement,
+  TItemElement extends Element = HTMLTableCellElement,
+> = {
+  virtualColumns: MRT_VirtualItem[];
+  virtualPaddingLeft?: number;
+  virtualPaddingRight?: number;
+} & Virtualizer<TScrollElement, TItemElement>;
+export type MRT_DefinedColumnDef<
+  TData extends MRT_RowData,
+  TValue = unknown,
+> = {
+  _filterFn: MRT_FilterOption;
+  defaultDisplayColumn: Partial<MRT_ColumnDef<TData, TValue>>;
+  id: string;
+} & Omit<MRT_ColumnDef<TData, TValue>, 'defaultDisplayColumn' | 'id'>;
+export type MRT_DefinedTableOptions<TData extends MRT_RowData> = {
+  icons: MRT_Icons;
+  localization: MRT_Localization;
+  mrtTheme: Required<MRT_Theme>;
+} & Omit<
+  MRT_TableOptions<TData>,
+  'icons' | 'localization' | 'mrtTheme'
+>;
+export type MRT_DensityState = 'comfortable' | 'compact' | 'spacious';
 export type MRT_DisplayColumnDef<
   TData extends MRT_RowData,
   TValue = unknown,
 > = Omit<MRT_ColumnDef<TData, TValue>, 'accessorFn' | 'accessorKey'>;
-
-export type MRT_GroupColumnDef<TData extends MRT_RowData> =
-  MRT_DisplayColumnDef<TData, any> & {
-    columns: MRT_ColumnDef<TData>[];
-  };
-
-export type MRT_DefinedColumnDef<
-  TData extends MRT_RowData,
-  TValue = unknown,
-> = Omit<MRT_ColumnDef<TData, TValue>, 'defaultDisplayColumn' | 'id'> & {
-  _filterFn: MRT_FilterOption;
-  defaultDisplayColumn: Partial<MRT_ColumnDef<TData, TValue>>;
-  id: string;
-};
-
-export type MRT_Column<TData extends MRT_RowData, TValue = unknown> = Omit<
-  Column<TData, TValue>,
-  'columnDef' | 'columns' | 'filterFn' | 'footer' | 'header'
-> & {
-  columnDef: MRT_DefinedColumnDef<TData, TValue>;
-  columns?: MRT_Column<TData, TValue>[];
-  filterFn?: MRT_FilterFn<TData>;
-  footer: string;
-  header: string;
-};
-
-export type MRT_Header<TData extends MRT_RowData> = Omit<
-  Header<TData, unknown>,
-  'column'
-> & {
-  column: MRT_Column<TData>;
-};
-
-export type MRT_HeaderGroup<TData extends MRT_RowData> = Omit<
-  HeaderGroup<TData>,
-  'headers'
-> & {
-  headers: MRT_Header<TData>[];
-};
-
-export type MRT_Row<TData extends MRT_RowData> = Omit<
-  Row<TData>,
-  | '_valuesCache'
-  | 'getAllCells'
-  | 'getParentRow'
-  | 'getParentRows'
-  | 'getRow'
-  | 'getVisibleCells'
-  | 'subRows'
-> & {
-  _valuesCache: Record<LiteralUnion<string & DeepKeys<TData>>, any>;
-  getAllCells: () => MRT_Cell<TData>[];
-  getParentRow: () => MRT_Row<TData> | null;
-  getParentRows: () => MRT_Row<TData>[];
-  getRow: () => MRT_Row<TData>;
-  getVisibleCells: () => MRT_Cell<TData>[];
-  subRows?: MRT_Row<TData>[];
-};
-
-export type MRT_Cell<TData extends MRT_RowData, TValue = unknown> = Omit<
-  Cell<TData, TValue>,
-  'column' | 'row'
-> & {
-  column: MRT_Column<TData, TValue>;
-  row: MRT_Row<TData>;
-};
-
-export type MRT_AggregationOption = string & keyof typeof MRT_AggregationFns;
-
-export type MRT_AggregationFn<TData extends MRT_RowData> =
-  | AggregationFn<TData>
-  | MRT_AggregationOption;
-
-export type MRT_SortingOption = LiteralUnion<
-  string & keyof typeof MRT_SortingFns
->;
-
-export type MRT_SortingFn<TData extends MRT_RowData> =
-  | MRT_SortingOption
-  | SortingFn<TData>;
-
-export type MRT_FilterOption = LiteralUnion<
-  string & keyof typeof MRT_FilterFns
->;
-
-export type MRT_FilterFn<TData extends MRT_RowData> =
-  | FilterFn<TData>
-  | MRT_FilterOption;
-
-export type MRT_InternalFilterOption = {
-  divider: boolean;
-  label: string;
-  option: string;
-  symbol: string;
-};
-
 export type MRT_DisplayColumnIds =
   | 'mrt-row-actions'
   | 'mrt-row-drag'
@@ -792,6 +467,343 @@ export type MRT_DisplayColumnIds =
   | 'mrt-row-pin'
   | 'mrt-row-select'
   | 'mrt-row-spacer';
+//staged, uncommitted edit values per row id, keyed by column id, for the row currently being
+//created/edited; replaces the old direct reads/writes of react-table's internal row._valuesCache
+export type MRT_EditingRowValuesCacheState = Record<
+  string,
+  Record<string, unknown>
+>;
+export type MRT_ExpandedState = ExpandedState;
+export type MRT_FilterFn<TData extends MRT_RowData> =
+  | FilterFn<any, TData>
+  | MRT_FilterOption;
+export type MRT_FilterOption = LiteralUnion<
+  keyof typeof MRT_FilterFns & string
+>;
+
+//column/row grab handles are driven by @dnd-kit, not native HTML5 drag-and-drop, so
+//onDragStart/onDragEnd receive dnd-kit's event shape instead of IconButtonProps' native
+//DragEventHandler<HTMLButtonElement> - incompatible parameter types, hence the Omit+override
+//instead of just intersecting.
+export type MRT_GrabHandleIconButtonProps = {
+  onDragEnd?: (event: DragEndEvent) => void;
+  onDragStart?: (event: DragStartEvent) => void;
+} & Omit<
+  IconButtonProps,
+  'onDragEnd' | 'onDragStart'
+>;
+
+export type MRT_GroupColumnDef<TData extends MRT_RowData> =
+  {
+    columns: MRT_ColumnDef<TData>[];
+  } & MRT_DisplayColumnDef<TData, any>;
+
+export type MRT_GroupingState = GroupingState;
+
+export type MRT_Header<TData extends MRT_RowData> = {
+  column: MRT_Column<TData>;
+} & Omit<
+  Header<MRT_TableFeaturesType, TData, unknown>,
+  'column'
+>;
+
+export type MRT_HeaderGroup<TData extends MRT_RowData> = {
+  headers: MRT_Header<TData>[];
+} & Omit<
+  HeaderGroup<MRT_TableFeaturesType, TData>,
+  'headers'
+>;
+
+export type MRT_InternalFilterOption = {
+  divider: boolean;
+  label: string;
+  option: string;
+  symbol: string;
+};
+
+export interface MRT_Localization {
+  actions: string;
+  and: string;
+  cancel: string;
+  changeFilterMode: string;
+  changeSearchMode: string;
+  clearFilter: string;
+  clearSearch: string;
+  clearSelection: string;
+  clearSort: string;
+  clickToCopy: string;
+  collapse: string;
+  collapseAll: string;
+  columnActions: string;
+  copiedToClipboard: string;
+  copy: string;
+  dropToGroupBy: string;
+  edit: string;
+  expand: string;
+  expandAll: string;
+  filterArrIncludes: string;
+  filterArrIncludesAll: string;
+  filterArrIncludesSome: string;
+  filterBetween: string;
+  filterBetweenInclusive: string;
+  filterByColumn: string;
+  filterContains: string;
+  filterEmpty: string;
+  filterEndsWith: string;
+  filterEquals: string;
+  filterEqualsString: string;
+  filterFuzzy: string;
+  filterGreaterThan: string;
+  filterGreaterThanOrEqualTo: string;
+  filterIncludesString: string;
+  filterIncludesStringSensitive: string;
+  filteringByColumn: string;
+  filterInNumberRange: string;
+  filterLessThan: string;
+  filterLessThanOrEqualTo: string;
+  filterMode: string;
+  filterNotEmpty: string;
+  filterNotEquals: string;
+  filterStartsWith: string;
+  filterWeakEquals: string;
+  goToFirstPage: string;
+  goToLastPage: string;
+  goToNextPage: string;
+  goToPreviousPage: string;
+  grab: string;
+  groupByColumn: string;
+  groupedBy: string;
+  hideAll: string;
+  hideColumn: string;
+  // language of the localization as BCP 47 language tag for number formatting
+  language: string;
+  max: string;
+  min: string;
+  move: string;
+  noRecordsToDisplay: string;
+  noResultsFound: string;
+  of: string;
+  or: string;
+  pin: string;
+  pinToLeft: string;
+  pinToRight: string;
+  resetColumnSize: string;
+  resetOrder: string;
+  rowActions: string;
+  rowNumber: string;
+  rowNumbers: string;
+  rowsPerPage: string;
+  save: string;
+  search: string;
+  select: string;
+  selectedCountOfRowCountRowsSelected: string;
+  showAll: string;
+  showAllColumns: string;
+  showHideColumns: string;
+  showHideFilters: string;
+  showHideSearch: string;
+  sortByColumnAsc: string;
+  sortByColumnDesc: string;
+  sortedByColumnAsc: string;
+  sortedByColumnDesc: string;
+  thenBy: string;
+  toggleDensity: string;
+  toggleFullScreen: string;
+  toggleSelectAll: string;
+  toggleSelectRow: string;
+  toggleVisibility: string;
+  ungroupByColumn: string;
+  unpin: string;
+  unpinAll: string;
+}
+
+export type MRT_PaginationState = PaginationState;
+
+export type MRT_Row<TData extends MRT_RowData> = {
+  getAllCells: () => MRT_Cell<TData>[];
+  getParentRow: () => MRT_Row<TData> | null;
+  getParentRows: () => MRT_Row<TData>[];
+  getRow: () => MRT_Row<TData>;
+  getVisibleCells: () => MRT_Cell<TData>[];
+  subRows?: MRT_Row<TData>[];
+} & Omit<
+  Row<MRT_TableFeaturesType, TData>,
+  | 'getAllCells'
+  | 'getParentRow'
+  | 'getParentRows'
+  | 'getRow'
+  | 'getVisibleCells'
+  | 'subRows'
+>;
+
+export type MRT_RowData = Record<string, any>;
+
+//useSortable() for a row is called once in MRT_TableBodyRow.tsx (the row is the actual sortable
+//item), but the drag handle itself renders several props-drilling levels deeper (as the
+//mrt-row-drag display column's Cell, rendered via MRT_TableBodyCell.tsx) - this bundle threads
+//that hook's listeners/attributes/activator ref down to MRT_TableBodyRowGrabHandle.tsx, the same
+//way rowRef above already does for the same reason.
+export type MRT_RowDragHandleProps = {
+  activatorRef?: Ref<HTMLButtonElement>;
+  attributes?: DraggableAttributes;
+  listeners?: DraggableSyntheticListeners;
+};
+
+export interface MRT_RowModel<TData extends MRT_RowData> {
+  flatRows: MRT_Row<TData>[];
+  rows: MRT_Row<TData>[];
+  rowsById: { [key: string]: MRT_Row<TData> };
+}
+
+export type MRT_RowSelectionState = RowSelectionState;
+
+export type MRT_RowVirtualizer<
+  TScrollElement extends Element | Window = HTMLDivElement,
+  TItemElement extends Element = HTMLTableRowElement,
+> = {
+  virtualRows: MRT_VirtualItem[];
+} & Virtualizer<TScrollElement, TItemElement>;
+
+export type MRT_SortFn<TData extends MRT_RowData> =
+  | MRT_SortOption
+  | SortFn<any, TData>;
+
+export type MRT_SortingState = SortingState;
+
+export type MRT_SortOption = LiteralUnion<
+  keyof typeof MRT_SortFns & string
+>;
+
+export type MRT_StatefulTableOptions<TData extends MRT_RowData> =
+  {
+    state: Pick<
+      MRT_TableState<TData>,
+      | 'columnFilterFns'
+      | 'columnOrder'
+      | 'columnResizing'
+      | 'creatingRow'
+      | 'density'
+      | 'draggingColumn'
+      | 'draggingRow'
+      | 'editingCell'
+      | 'editingRow'
+      | 'editingRowValuesCache'
+      | 'globalFilterFn'
+      | 'grouping'
+      | 'hoveredColumn'
+      | 'hoveredRow'
+      | 'isFullScreen'
+      | 'pagination'
+      | 'showAlertBanner'
+      | 'showColumnFilters'
+      | 'showGlobalFilter'
+      | 'showToolbarDropZone'
+    >;
+  } & MRT_DefinedTableOptions<TData>;
+
+export type MRT_TableInstance<TData extends MRT_RowData> = {
+  getAllColumns: () => MRT_Column<TData>[];
+  getAllFlatColumns: () => MRT_Column<TData>[];
+  getAllLeafColumns: () => MRT_Column<TData>[];
+  getBottomRows: () => MRT_Row<TData>[];
+  getCenterLeafColumns: () => MRT_Column<TData>[];
+  getCenterRows: () => MRT_Row<TData>[];
+  getColumn: (columnId: string) => MRT_Column<TData>;
+  getEndLeafColumns: () => MRT_Column<TData>[];
+  getExpandedRowModel: () => MRT_RowModel<TData>;
+  getFlatHeaders: () => MRT_Header<TData>[];
+  getFooterGroups: () => MRT_HeaderGroup<TData>[];
+  getHeaderGroups: () => MRT_HeaderGroup<TData>[];
+  getLeafHeaders: () => MRT_Header<TData>[];
+  getPaginatedRowModel: () => MRT_RowModel<TData>;
+  getPreFilteredRowModel: () => MRT_RowModel<TData>;
+  getPrePaginatedRowModel: () => MRT_RowModel<TData>;
+  getRowModel: () => MRT_RowModel<TData>;
+  getSelectedRowModel: () => MRT_RowModel<TData>;
+  getStartLeafColumns: () => MRT_Column<TData>[];
+  getState: () => MRT_TableState<TData>;
+  getTopRows: () => MRT_Row<TData>[];
+  options: MRT_StatefulTableOptions<TData>;
+  refs: {
+    actionCellRef: RefObject<HTMLTableCellElement | null>;
+    bottomToolbarRef: RefObject<HTMLDivElement | null>;
+    editInputRefs: RefObject<null | Record<string, HTMLInputElement>>;
+    filterInputRefs: RefObject<null | Record<string, HTMLInputElement>>;
+    lastSelectedRowId: RefObject<null | string>;
+    searchInputRef: RefObject<HTMLInputElement | null>;
+    tableContainerRef: RefObject<HTMLDivElement | null>;
+    tableFooterRef: RefObject<HTMLTableSectionElement | null>;
+    tableHeadCellRefs: RefObject<null | Record<string, HTMLTableCellElement>>;
+    tableHeadRef: RefObject<HTMLTableSectionElement | null>;
+    tablePaperRef: RefObject<HTMLDivElement | null>;
+    topToolbarRef: RefObject<HTMLDivElement | null>;
+  };
+  setActionCell: Dispatch<SetStateAction<MRT_Cell<TData> | null>>;
+  setColumnFilterFns: Dispatch<SetStateAction<MRT_ColumnFilterFnsState>>;
+  setCreatingRow: Dispatch<SetStateAction<MRT_Row<TData> | null | true>>;
+  setDensity: Dispatch<SetStateAction<MRT_DensityState>>;
+  setDraggingColumn: Dispatch<SetStateAction<MRT_Column<TData> | null>>;
+  setDraggingRow: Dispatch<SetStateAction<MRT_Row<TData> | null>>;
+  setEditingCell: Dispatch<SetStateAction<MRT_Cell<TData> | null>>;
+  setEditingRow: Dispatch<SetStateAction<MRT_Row<TData> | null>>;
+  setEditingRowValuesCache: Dispatch<
+    SetStateAction<MRT_EditingRowValuesCacheState>
+  >;
+  setGlobalFilterFn: Dispatch<SetStateAction<MRT_FilterOption>>;
+  setHoveredColumn: Dispatch<SetStateAction<null | Partial<MRT_Column<TData>>>>;
+  setHoveredRow: Dispatch<SetStateAction<null | Partial<MRT_Row<TData>>>>;
+  setIsFullScreen: Dispatch<SetStateAction<boolean>>;
+  setShowAlertBanner: Dispatch<SetStateAction<boolean>>;
+  setShowColumnFilters: Dispatch<SetStateAction<boolean>>;
+  setShowGlobalFilter: Dispatch<SetStateAction<boolean>>;
+  setShowToolbarDropZone: Dispatch<SetStateAction<boolean>>;
+} & Omit<
+  AppReactTable<
+    MRT_TableFeaturesType,
+    TData,
+    //MRT's useTable()/useAppTable() call is always given the constant selector () => ({}) (see
+    //useMRT_TableInstance.ts's own comment) - table.state is genuinely empty for consumers too,
+    //which this type now reflects instead of omitting `.state`/`.Subscribe`/`.FlexRender`
+    //entirely (the previous base type, table-core's framework-agnostic `Table<...>`, doesn't
+    //carry those - they're added by react-table's React-specific wrapper).
+    Record<string, never>,
+    //Empty tableComponents/cellComponents/headerComponents - see useMRT_AppTable.ts's own
+    //comment for why MRT doesn't use createTableHook's named-component-registry machinery.
+    //Deliberately `{}`, not `Record<string, never>`: AppReactTable intersects TTableComponents
+    //directly at its top level (`& NoInfer<TTableComponents>`), and an index-signature type
+    //there collides with every *existing* property name too, collapsing the whole intersection
+    //to `never` - `{}` is a true no-op in an intersection, which is what "no extra components"
+    //actually needs to mean here.
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    {},
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    {},
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    {}
+  >,
+  | 'getAllColumns'
+  | 'getAllFlatColumns'
+  | 'getAllLeafColumns'
+  | 'getBottomRows'
+  | 'getCenterLeafColumns'
+  | 'getCenterRows'
+  | 'getColumn'
+  | 'getEndLeafColumns'
+  | 'getExpandedRowModel'
+  | 'getFlatHeaders'
+  | 'getFooterGroups'
+  | 'getHeaderGroups'
+  | 'getLeafHeaders'
+  | 'getPaginatedRowModel'
+  | 'getPreFilteredRowModel'
+  | 'getPrePaginatedRowModel'
+  | 'getRowModel'
+  | 'getSelectedRowModel'
+  | 'getStartLeafColumns'
+  | 'getState'
+  | 'getTopRows'
+  | 'options'
+>;
 
 /**
  * `columns` and `data` props are the only required props, but there are over 170 other optional props.
@@ -804,7 +816,7 @@ export type MRT_DisplayColumnIds =
  */
 export interface MRT_TableOptions<TData extends MRT_RowData>
   extends Omit<
-    Partial<TableOptions<TData>>,
+    Partial<TableOptions<MRT_TableFeaturesType, TData>>,
     | 'columns'
     | 'data'
     | 'defaultColumn'
@@ -816,9 +828,14 @@ export interface MRT_TableOptions<TData extends MRT_RowData>
     | 'onStateChange'
     | 'state'
   > {
+  //v9 moved filterFns/sortFns/aggregationFns registration into the static tableFeatures()
+  //config rather than TableOptions, so they're no longer inherited from the Omit<Partial<
+  //TableOptions<...>>> above - redeclared here so consumers can still add named custom
+  //functions per table instance, merged with MRT's own registry in useMRT_TableOptions.
+  aggregationFns?: Record<string, AggregationFnDef<any, TData, any, any>>;
   columnFilterDisplayMode?: 'custom' | 'popover' | 'subheader';
   columnFilterModeOptions?: Array<
-    LiteralUnion<string & MRT_FilterOption>
+    LiteralUnion<MRT_FilterOption & string>
   > | null;
   /**
    * The columns to display in the table. `accessorKey`s or `accessorFn`s must match keys in the `data` table option.
@@ -893,6 +910,7 @@ export interface MRT_TableOptions<TData extends MRT_RowData>
   enableToolbarInternalActions?: boolean;
   enableTopToolbar?: boolean;
   expandRowsFn?: (dataRow: TData) => TData[];
+  filterFns?: Record<string, FilterFn<any, TData>>;
   getRowId?: (
     originalRow: TData,
     index: number,
@@ -906,7 +924,7 @@ export interface MRT_TableOptions<TData extends MRT_RowData>
   /**
    * Changes which kind of CSS layout is used to render the table. `semantic` uses default semantic HTML elements, while `grid` adds CSS grid and flexbox styles
    */
-  layoutMode?: 'grid' | 'grid-no-grow' | 'semantic';
+  layoutMode?: 'grid-no-grow' | 'grid' | 'semantic';
   /**
    * Pass in either a locale imported from `material-react-table/locales/*` or a custom locale object.
    *
@@ -914,13 +932,6 @@ export interface MRT_TableOptions<TData extends MRT_RowData>
    * @link https://www.material-react-table.com/docs/guides/localization
    */
   localization?: Partial<MRT_Localization>;
-  /**
-   * Memoize cells, rows, or the entire table body to potentially improve render performance.
-   *
-   * @warning This will break some dynamic rendering features. See the memoization guide for more info:
-   * @link https://www.material-react-table.com/docs/guides/memoize-components
-   */
-  memoMode?: 'cells' | 'rows' | 'table-body';
   mrtTheme?: ((theme: Theme) => Partial<MRT_Theme>) | Partial<MRT_Theme>;
   muiBottomToolbarProps?:
   | ((props: { table: MRT_TableInstance<TData> }) => BoxProps)
@@ -928,8 +939,8 @@ export interface MRT_TableOptions<TData extends MRT_RowData>
   muiCircularProgressProps?:
   | ((props: {
     table: MRT_TableInstance<TData>;
-  }) => CircularProgressProps & { Component?: ReactNode })
-  | (CircularProgressProps & { Component?: ReactNode });
+  }) => { Component?: ReactNode } & CircularProgressProps)
+  | ({ Component?: ReactNode } & CircularProgressProps);
   muiColumnActionsButtonProps?:
   | ((props: {
     column: MRT_Column<TData>;
@@ -940,8 +951,8 @@ export interface MRT_TableOptions<TData extends MRT_RowData>
   | ((props: {
     column: MRT_Column<TData>;
     table: MRT_TableInstance<TData>;
-  }) => IconButtonProps)
-  | IconButtonProps;
+  }) => MRT_GrabHandleIconButtonProps)
+  | MRT_GrabHandleIconButtonProps;
   muiCopyButtonProps?:
   | ((props: {
     cell: MRT_Cell<TData>;
@@ -1040,27 +1051,27 @@ export interface MRT_TableOptions<TData extends MRT_RowData>
   | LinearProgressProps;
   muiPaginationProps?:
   | ((props: { table: MRT_TableInstance<TData> }) => Partial<
-    PaginationProps & {
-      SelectProps?: Partial<SelectProps>;
+    {
       disabled?: boolean;
       rowsPerPageOptions?: { label: string; value: number }[] | number[];
+      SelectProps?: Partial<SelectProps>;
       showRowsPerPage?: boolean;
-    }
+    } & PaginationProps
   >)
   | Partial<
-    PaginationProps & {
-      SelectProps?: Partial<SelectProps>;
+    {
       disabled?: boolean;
       rowsPerPageOptions?: { label: string; value: number }[] | number[];
+      SelectProps?: Partial<SelectProps>;
       showRowsPerPage?: boolean;
-    }
+    } & PaginationProps
   >;
   muiRowDragHandleProps?:
   | ((props: {
     row: MRT_Row<TData>;
     table: MRT_TableInstance<TData>;
-  }) => IconButtonProps)
-  | IconButtonProps;
+  }) => MRT_GrabHandleIconButtonProps)
+  | MRT_GrabHandleIconButtonProps;
   muiSearchTextFieldProps?:
   | ((props: { table: MRT_TableInstance<TData> }) => TextFieldProps)
   | TextFieldProps;
@@ -1160,7 +1171,7 @@ export interface MRT_TableOptions<TData extends MRT_RowData>
     exitCreatingMode: () => void;
     row: MRT_Row<TData>;
     table: MRT_TableInstance<TData>;
-    values: Record<LiteralUnion<string & DeepKeys<TData>>, any>;
+    values: Record<LiteralUnion<DeepKeys<TData> & string>, any>;
   }) => Promise<void> | void;
   onDensityChange?: OnChangeFn<MRT_DensityState>;
   onDraggingColumnChange?: OnChangeFn<MRT_Column<TData> | null>;
@@ -1175,11 +1186,12 @@ export interface MRT_TableOptions<TData extends MRT_RowData>
     exitEditingMode: () => void;
     row: MRT_Row<TData>;
     table: MRT_TableInstance<TData>;
-    values: Record<LiteralUnion<string & DeepKeys<TData>>, any>;
+    values: Record<LiteralUnion<DeepKeys<TData> & string>, any>;
   }) => Promise<void> | void;
+  onEditingRowValuesCacheChange?: OnChangeFn<MRT_EditingRowValuesCacheState>;
   onGlobalFilterFnChange?: OnChangeFn<MRT_FilterOption>;
-  onHoveredColumnChange?: OnChangeFn<Partial<MRT_Column<TData>> | null>;
-  onHoveredRowChange?: OnChangeFn<Partial<MRT_Row<TData>> | null>;
+  onHoveredColumnChange?: OnChangeFn<null | Partial<MRT_Column<TData>>>;
+  onHoveredRowChange?: OnChangeFn<null | Partial<MRT_Row<TData>>>;
   onIsFullScreenChange?: OnChangeFn<boolean>;
   onShowAlertBannerChange?: OnChangeFn<boolean>;
   onShowColumnFiltersChange?: OnChangeFn<boolean>;
@@ -1259,8 +1271,8 @@ export interface MRT_TableOptions<TData extends MRT_RowData>
     table: MRT_TableInstance<TData>;
   }) => ReactNode;
   renderToolbarAlertBannerContent?: (props: {
-    groupedAlert: ReactNode | null;
-    selectedAlert: ReactNode | null;
+    groupedAlert: null | ReactNode;
+    selectedAlert: null | ReactNode;
     table: MRT_TableInstance<TData>;
   }) => ReactNode;
   renderToolbarInternalActions?: (props: {
@@ -1279,8 +1291,8 @@ export interface MRT_TableOptions<TData extends MRT_RowData>
   | 'select-sticky'
   | 'select-top'
   | 'sticky'
-  | 'top'
-  | 'top-and-bottom';
+  | 'top-and-bottom'
+  | 'top';
   rowVirtualizerInstanceRef?: RefObject<MRT_RowVirtualizer | null>;
   rowVirtualizerOptions?:
   | ((props: {
@@ -1288,8 +1300,64 @@ export interface MRT_TableOptions<TData extends MRT_RowData>
   }) => Partial<VirtualizerOptions<HTMLDivElement, HTMLTableRowElement>>)
   | Partial<VirtualizerOptions<HTMLDivElement, HTMLTableRowElement>>;
   selectAllMode?: 'all' | 'page';
+  sortFns?: Record<string, SortFn<any, TData>>;
   /**
    * Manage state externally any way you want, then pass it back into MRT.
    */
   state?: Partial<MRT_TableState<TData>>;
 }
+
+export interface MRT_TableState<TData extends MRT_RowData>
+  extends TableState<MRT_TableFeaturesType> {
+  actionCell?: MRT_Cell<TData> | null;
+  columnFilterFns: MRT_ColumnFilterFnsState;
+  creatingRow: MRT_Row<TData> | null;
+  density: MRT_DensityState;
+  draggingColumn: MRT_Column<TData> | null;
+  draggingRow: MRT_Row<TData> | null;
+  editingCell: MRT_Cell<TData> | null;
+  editingRow: MRT_Row<TData> | null;
+  editingRowValuesCache: MRT_EditingRowValuesCacheState;
+  globalFilterFn: MRT_FilterOption;
+  hoveredColumn: null | Partial<MRT_Column<TData>>;
+  hoveredRow: null | Partial<MRT_Row<TData>>;
+  isFullScreen: boolean;
+  isLoading: boolean;
+  isSaving: boolean;
+  showAlertBanner: boolean;
+  showColumnFilters: boolean;
+  showGlobalFilter: boolean;
+  showLoadingOverlay: boolean;
+  showProgressBars: boolean;
+  showSkeletons: boolean;
+  showToolbarDropZone: boolean;
+}
+
+export interface MRT_Theme {
+  baseBackgroundColor: string;
+  cellNavigationOutlineColor: string;
+  draggingBorderColor: string;
+  matchHighlightColor: string;
+  menuBackgroundColor: string;
+  pinnedRowBackgroundColor: string;
+  selectedRowBackgroundColor: string;
+}
+
+export type MRT_Updater<T> = Updater<T>;
+
+export type MRT_VirtualItem = VirtualItem;
+
+export type MRT_VirtualizerOptions<
+  TScrollElement extends Element | Window = Element | Window,
+  TItemElement extends Element = Element,
+> = VirtualizerOptions<TScrollElement, TItemElement>;
+
+export type MRT_VisibilityState = ColumnVisibilityState;
+
+export type Prettify<T> = { [K in keyof T]: T[K] } & unknown;
+
+export type TextFieldProps = MuiTextFieldProps;
+
+export type Xor<A, B> =
+  | Prettify<{ [k in keyof A]?: never } & B>
+  | Prettify<{ [k in keyof B]?: never } & A>;

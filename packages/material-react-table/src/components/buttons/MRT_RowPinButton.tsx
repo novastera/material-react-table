@@ -1,7 +1,8 @@
-import { type MouseEvent, useState } from 'react';
-import { type RowPinningPosition } from '@tanstack/react-table';
 import IconButton, { type IconButtonProps } from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
+import { type RowPinningPosition } from '@tanstack/react-table';
+import { type MouseEvent, useState } from 'react';
+
 import {
   type MRT_Row,
   type MRT_RowData,
@@ -29,7 +30,11 @@ export const MRT_RowPinButton = <TData extends MRT_RowData>({
       rowPinningDisplayMode,
     },
   } = table;
-
+  //no bare rowPinning subscription here - this is always rendered inside MRT_AppRow (see
+  //MRT_TableBody.tsx's row-mapping loop), whose own selector already includes
+  //`isRowPinned: row.getIsPinned()`, narrowed by row.id. A bare subscription here would be
+  //redundant *and* actively harmful: it would re-fire on ANY row's pin change, not just this
+  //row's, undoing the ancestor boundary's narrowing.
   const isPinned = row.getIsPinned();
 
   const [tooltipOpened, setTooltipOpened] = useState(false);

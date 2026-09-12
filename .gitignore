@@ -41,3 +41,6 @@ yarn-error.log*
 .turbo
 
 *storybook.log
+
+# local-only verification tooling, not shipped/reviewed (see internal-check/README.md)
+internal-check/

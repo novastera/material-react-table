@@ -1,19 +1,22 @@
-import { type DragEvent, memo, useMemo, useRef } from 'react';
-import { type VirtualItem } from '@tanstack/react-virtual';
-import TableRow, { type TableRowProps } from '@mui/material/TableRow';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   type Theme,
   useTheme,
 } from '@mui/material/styles';
-import { MRT_TableBodyCell, Memo_MRT_TableBodyCell } from './MRT_TableBodyCell';
-import { MRT_TableDetailPanel } from './MRT_TableDetailPanel';
+import TableRow, { type TableRowProps } from '@mui/material/TableRow';
+import { useSelector } from '@tanstack/react-store';
+import { type TableState } from '@tanstack/react-table';
+import { type VirtualItem } from '@tanstack/react-virtual';
+import { useRef } from 'react';
+
+import { useMRT_RowContext } from '../../hooks/useMRT_AppRow';
+import { useMRT_TableContext } from '../../hooks/useMRT_AppTable';
 import {
   type MRT_Cell,
   type MRT_ColumnVirtualizer,
-  type MRT_Row,
   type MRT_RowData,
   type MRT_RowVirtualizer,
-  type MRT_TableInstance,
   type MRT_VirtualItem,
 } from '../../types';
 import { getIsRowSelected } from '../../utils/row.utils';
@@ -25,42 +28,53 @@ import {
   mrtLighten,
   resolveBaseBackgroundForColorTools,
 } from '../../utils/style.utils';
+import { type MRT_TableFeaturesType } from '../../utils/tableFeatures';
 import { parseFromValuesOrFunc } from '../../utils/utils';
+import { MRT_TableBodyCell } from './MRT_TableBodyCell';
+import { MRT_TableDetailPanel } from './MRT_TableDetailPanel';
 
-export interface MRT_TableBodyRowProps<TData extends MRT_RowData>
-  extends TableRowProps {
+export interface MRT_TableBodyRowProps extends TableRowProps {
   columnVirtualizer?: MRT_ColumnVirtualizer;
   numRows?: number;
   pinnedRowIds?: string[];
-  row: MRT_Row<TData>;
   rowVirtualizer?: MRT_RowVirtualizer;
   staticRowIndex: number;
-  table: MRT_TableInstance<TData>;
+  tableFooterHeight?: number;
+  tableHeadHeight?: number;
   virtualRow?: VirtualItem;
 }
 
+//row/table are read from context (see the MRT_AppRow wrapper in MRT_TableBody.tsx's row-mapping
+//loop, which is what makes them available here) rather than received as props - the row-keyed
+//atoms this component used to bare-subscribe to directly (draggingRow/hoveredRow/rowPinning/
+//rowSelection) are now subscribed, narrowed by row.id, at that same wrapper boundary instead
+//(migration-render.md §13's resolution) - this component re-renders only when ITS row's relevance
+//to one of those actually changes, not on any row's. The structural/global atoms below
+//(density/columnOrder/columnPinning/columnVisibility/grouping/isFullScreen) stay as bare
+//subscriptions - narrowing wouldn't help them (they reshape the whole table, not one row).
 export const MRT_TableBodyRow = <TData extends MRT_RowData>({
   columnVirtualizer,
   numRows,
   pinnedRowIds,
-  row,
   rowVirtualizer,
   staticRowIndex,
-  table,
+  tableFooterHeight = 0,
+  tableHeadHeight = 0,
   virtualRow,
   ...rest
-}: MRT_TableBodyRowProps<TData>) => {
+}: MRT_TableBodyRowProps) => {
   const theme = useTheme();
+  const row = useMRT_RowContext<TData>();
+  const table = useMRT_TableContext<TData>();
 
   const {
-    getState,
     options: {
+      enableRowDragging,
       enableRowOrdering,
       enableRowPinning,
       enableStickyFooter,
       enableStickyHeader,
       layoutMode,
-      memoMode,
       mrtTheme: {
         baseBackgroundColor,
         pinnedRowBackgroundColor,
@@ -70,19 +84,25 @@ export const MRT_TableBodyRow = <TData extends MRT_RowData>({
       renderDetailPanel,
       rowPinningDisplayMode,
     },
-    refs: { tableFooterRef, tableHeadRef },
-    setHoveredRow,
   } = table;
-  const {
-    density,
-    draggingColumn,
-    draggingRow,
-    editingCell,
-    editingRow,
-    hoveredRow,
-    isFullScreen,
-    rowPinning,
-  } = getState();
+  const density = useSelector(table.atoms.density);
+  //not read directly - row.getVisibleCells() below reads both live (column-visibility's own
+  //row_getVisibleCells filters on columnVisibility and reads table.atoms.columnPinning directly
+  //for start/end partitioning - see @tanstack/table-core's columnVisibilityFeature.utils.js).
+  //Also subscribes columnOrder defensively, for the same "which cells, in what order" reasoning,
+  //even though the exact internal read wasn't traced as precisely as the other two. Found live via
+  //Stage 4 of migration-render.md - hiding a column left a stale extra <td> in every row even after
+  //the header correctly dropped it.
+  useSelector(table.atoms.columnOrder);
+  useSelector(table.atoms.columnPinning);
+  useSelector(table.atoms.columnVisibility);
+  //not read directly - row.getIsGrouped() below (gates the detail panel) reads this live.
+  useSelector(table.atoms.grouping);
+  const isFullScreen = useSelector(table.atoms.isFullScreen);
+  //draggingRow/hoveredRow are no longer subscribed here (see file comment above) - the wrapping
+  //MRT_AppRow already re-renders this component when either becomes/stops being relevant to THIS
+  //row, so a plain live read is correct and sufficient once re-rendered.
+  const { draggingRow, hoveredRow } = table.getState();
 
   const visibleCells = row.getVisibleCells();
 
@@ -107,26 +127,16 @@ export const MRT_TableBodyRow = <TData extends MRT_RowData>({
     ...rest,
   };
 
-  const [bottomPinnedIndex, topPinnedIndex] = useMemo(() => {
-    if (
-      !enableRowPinning ||
-      !rowPinningDisplayMode?.includes('sticky') ||
-      !pinnedRowIds ||
-      !row.getIsPinned()
-    )
-      return [];
-    return [
-      [...pinnedRowIds].reverse().indexOf(row.id),
-      pinnedRowIds.indexOf(row.id),
-    ];
-  }, [pinnedRowIds, rowPinning]);
-
-  const tableHeadHeight =
-    ((enableStickyHeader || isFullScreen) &&
-      tableHeadRef.current?.clientHeight) ||
-    0;
-  const tableFooterHeight =
-    (enableStickyFooter && tableFooterRef.current?.clientHeight) || 0;
+  const [bottomPinnedIndex, topPinnedIndex] =
+    enableRowPinning &&
+    rowPinningDisplayMode?.includes('sticky') &&
+    pinnedRowIds &&
+    row.getIsPinned()
+      ? [
+          [...pinnedRowIds].reverse().indexOf(row.id),
+          pinnedRowIds.indexOf(row.id),
+        ]
+      : [];
 
   const sx = (
     Array.isArray(tableRowProps?.sx)
@@ -147,17 +157,45 @@ export const MRT_TableBodyRow = <TData extends MRT_RowData>({
 
   const rowHeight = customRowHeight || defaultRowHeight;
 
-  const handleDragEnter = (_e: DragEvent) => {
-    if (enableRowOrdering && draggingRow) {
-      setHoveredRow(row);
-    }
-  };
-
-  const handleDragOver = (e: DragEvent) => {
-    e.preventDefault();
-  };
-
   const rowRef = useRef<HTMLTableRowElement | null>(null);
+
+  //the row is the actual dnd-kit sortable item - see useMRT_DragAndDrop.ts for the shared
+  //DndContext this participates in, and MRT_TableBodyRowGrabHandle.tsx (rendered several levels
+  //deeper, as the mrt-row-drag display column's Cell) for where listeners/attributes end up.
+  //Always called unconditionally (Rules of Hooks); `disabled` is dnd-kit's own native opt-out.
+  const {
+    attributes: rowDragAttributes,
+    listeners: rowDragListeners,
+    setActivatorNodeRef,
+    setNodeRef: setSortableNodeRef,
+    transform: rowDragTransform,
+    transition: rowDragTransition,
+  } = useSortable({
+    data: { row, type: 'row' },
+    disabled: !(enableRowDragging || enableRowOrdering),
+    id: row.id,
+  });
+
+  //dnd-kit's useSortable() only computes the drag-shift transform/transition - it never applies
+  //them to the DOM itself (unlike the old native-HTML5-DnD code, which had no separate
+  //"compute vs apply" step). Without this, dnd-kit tracks a drag correctly internally (confirmed
+  //via its own aria-live announcements) but the dragged row and its shifting siblings never
+  //visually move - drag-and-drop looks completely broken even though the reorder still commits
+  //correctly on drop. Combined with the virtualizer's own translateY (both are transform-based)
+  //rather than picking one, since a row can be both virtualized and mid-drag at once. Built with
+  //plain if-statements, not a ternary-per-array-element .filter(Boolean).join() - React Compiler
+  //rejects that shape regardless of where it lives (category `Todo`, "Unexpected terminal kind
+  //`ternary` for logical test block").
+  const transformParts: string[] = [];
+  if (virtualRow) transformParts.push(`translateY(${virtualRow.start}px)`);
+  //CSS.Transform.toString's return type is string | undefined even when its input is non-null -
+  //it can still yield undefined for an all-zero transform, so this needs its own guard.
+  const rowDragTransformString = rowDragTransform
+    ? CSS.Transform.toString(rowDragTransform)
+    : undefined;
+  if (rowDragTransformString) transformParts.push(rowDragTransformString);
+  const rowTransform =
+    transformParts.length > 0 ? transformParts.join(' ') : undefined;
 
   const cellHighlightColor = isRowSelected
     ? selectedRowBackgroundColor
@@ -188,9 +226,8 @@ export const MRT_TableBodyRow = <TData extends MRT_RowData>({
         data-index={renderDetailPanel ? staticRowIndex * 2 : staticRowIndex}
         data-pinned={!!isRowPinned || undefined}
         data-selected={isRowSelected || undefined}
-        onDragEnter={handleDragEnter}
-        onDragOver={handleDragOver}
-        ref={(node: HTMLTableRowElement) => {
+        ref={(node: HTMLTableRowElement | null) => {
+          setSortableNodeRef(node);
           if (node) {
             rowRef.current = node;
             rowVirtualizer?.measureElement(node);
@@ -199,9 +236,11 @@ export const MRT_TableBodyRow = <TData extends MRT_RowData>({
         selected={isRowSelected}
         {...tableRowProps}
         style={{
-          transform: virtualRow
-            ? `translateY(${virtualRow.start}px)`
-            : undefined,
+          transform: rowTransform,
+          //dnd-kit sets this to undefined for the row actively being dragged (so it tracks the
+          //pointer with no lag) and a real transition for siblings animating out of the way - only
+          //override the sx-managed transition when dnd-kit actually wants to.
+          transition: rowDragTransition,
           ...tableRowProps?.style,
         }}
         sx={[
@@ -275,27 +314,49 @@ export const MRT_TableBodyRow = <TData extends MRT_RowData>({
               staticColumnIndex = (cellOrVirtualCell as MRT_VirtualItem).index;
               cell = visibleCells[staticColumnIndex];
             }
-            const props = {
-              cell,
-              numRows,
-              rowRef,
-              staticColumnIndex,
-              staticRowIndex,
-              table,
-            };
+            if (!cell) return null;
             const key = `${cell.id}-${staticRowIndex}`;
-            return cell ? (
-              memoMode === 'cells' &&
-              cell.column.columnDef.columnDefType === 'data' &&
-              !draggingColumn &&
-              !draggingRow &&
-              editingCell?.id !== cell.id &&
-              editingRow?.id !== row.id ? (
-                <Memo_MRT_TableBodyCell key={key} {...props} />
-              ) : (
-                <MRT_TableBodyCell key={key} {...props} />
-              )
-            ) : null;
+            //narrowed by cell.id/column.id/row.id - the actual trigger for MRT_TableBodyCell's
+            //own cell/column/row-keyed reads (see that file's header comment). Column/cell-keyed
+            //changes specifically (draggingColumn/hoveredColumn/columnResizing/actionCell/
+            //editingCell) have no other path to reach this cell - nothing above it in the tree
+            //subscribes to those - so this selector is load-bearing, not just an optimization.
+            return (
+              //cell cast to any - table.AppCell expects table-core's raw Cell<TFeatures, TData,
+              //TValue>, structurally distinct from MRT_Cell<TData> (MRT_Column/MRT_DefinedColumnDef
+              //vs Column/ColumnDef, same type-vs-runtime gap useMRT_TableInstance.ts's own
+              //`table` cast already documents) - safe, the underlying runtime object is identical.
+              <table.AppCell
+                cell={cell as any}
+                key={key}
+                selector={(state: TableState<MRT_TableFeaturesType>) => ({
+                  isActionCell: state.actionCell?.id === cell.id,
+                  isCreatingRow: state.creatingRow?.id === cell.row.id,
+                  isDraggingColumn: state.draggingColumn?.id === cell.column.id,
+                  isDraggingRow: state.draggingRow?.id === cell.row.id,
+                  isEditingCell: state.editingCell?.id === cell.id,
+                  isEditingRow: state.editingRow?.id === cell.row.id,
+                  isHoveredColumn: state.hoveredColumn?.id === cell.column.id,
+                  isHoveredRow: state.hoveredRow?.id === cell.row.id,
+                  isResizingColumn:
+                    state.columnResizing?.isResizingColumn === cell.column.id,
+                })}
+              >
+                {() => (
+                  <MRT_TableBodyCell
+                    numRows={numRows}
+                    rowDragHandleProps={{
+                      activatorRef: setActivatorNodeRef,
+                      attributes: rowDragAttributes,
+                      listeners: rowDragListeners,
+                    }}
+                    rowRef={rowRef}
+                    staticColumnIndex={staticColumnIndex}
+                    staticRowIndex={staticRowIndex}
+                  />
+                )}
+              </table.AppCell>
+            );
           },
         )}
         {virtualPaddingRight ? (
@@ -315,9 +376,3 @@ export const MRT_TableBodyRow = <TData extends MRT_RowData>({
     </>
   );
 };
-
-export const Memo_MRT_TableBodyRow = memo(
-  MRT_TableBodyRow,
-  (prev, next) =>
-    prev.row === next.row && prev.staticRowIndex === next.staticRowIndex,
-) as typeof MRT_TableBodyRow;

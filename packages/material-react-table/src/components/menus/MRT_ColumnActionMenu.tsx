@@ -1,12 +1,15 @@
-import { type MouseEvent, useState } from 'react';
 import Menu, { type MenuProps } from '@mui/material/Menu';
-import { MRT_ActionMenuItem } from './MRT_ActionMenuItem';
-import { MRT_FilterOptionMenu } from './MRT_FilterOptionMenu';
+import { useSelector } from '@tanstack/react-store';
+import { type MouseEvent, useState } from 'react';
+
 import {
+  type MRT_ColumnResizingState,
   type MRT_Header,
   type MRT_RowData,
   type MRT_TableInstance,
 } from '../../types';
+import { MRT_ActionMenuItem } from './MRT_ActionMenuItem';
+import { MRT_FilterOptionMenu } from './MRT_FilterOptionMenu';
 
 export interface MRT_ColumnActionMenuProps<TData extends MRT_RowData>
   extends Partial<MenuProps> {
@@ -25,7 +28,6 @@ export const MRT_ColumnActionMenu = <TData extends MRT_RowData>({
 }: MRT_ColumnActionMenuProps<TData>) => {
   const {
     getAllLeafColumns,
-    getState,
     options: {
       columnFilterDisplayMode,
       columnFilterModeOptions,
@@ -55,13 +57,19 @@ export const MRT_ColumnActionMenu = <TData extends MRT_RowData>({
     refs: { filterInputRefs },
     setColumnFilterFns,
     setColumnOrder,
-    setColumnSizingInfo,
+    setColumnResizing,
     setShowColumnFilters,
   } = table;
   const { column } = header;
   const { columnDef } = column;
-  const { columnSizing, columnVisibility, density, showColumnFilters } =
-    getState();
+  const columnSizing = useSelector(table.atoms.columnSizing);
+  const columnVisibility = useSelector(table.atoms.columnVisibility);
+  const density = useSelector(table.atoms.density);
+  const showColumnFilters = useSelector(table.atoms.showColumnFilters);
+  //not read directly - column.getIsSorted()/getIsGrouped()/getIsPinned() below read these live.
+  useSelector(table.atoms.sorting);
+  useSelector(table.atoms.grouping);
+  useSelector(table.atoms.columnPinning);
   const columnFilterValue = column.getFilterValue();
 
   const [filterMenuAnchorEl, setFilterMenuAnchorEl] =
@@ -83,7 +91,10 @@ export const MRT_ColumnActionMenu = <TData extends MRT_RowData>({
   };
 
   const handleResetColumnSize = () => {
-    setColumnSizingInfo((old) => ({ ...old, isResizingColumn: false }));
+    setColumnResizing((old: MRT_ColumnResizingState) => ({
+      ...old,
+      isResizingColumn: false,
+    }));
     column.resetSize();
     setAnchorEl(null);
   };
@@ -93,7 +104,7 @@ export const MRT_ColumnActionMenu = <TData extends MRT_RowData>({
     setAnchorEl(null);
   };
 
-  const handlePinColumn = (pinDirection: 'left' | 'right' | false) => {
+  const handlePinColumn = (pinDirection: 'end' | 'start' | false) => {
     column.pin(pinDirection);
     setAnchorEl(null);
   };
@@ -249,19 +260,19 @@ export const MRT_ColumnActionMenu = <TData extends MRT_RowData>({
     ...(enableColumnPinning && column.getCanPin()
       ? [
           <MRT_ActionMenuItem
-            disabled={column.getIsPinned() === 'left' || !column.getCanPin()}
+            disabled={column.getIsPinned() === 'start' || !column.getCanPin()}
             icon={<PushPinIcon style={{ transform: 'rotate(90deg)' }} />}
             key={7}
             label={localization.pinToLeft}
-            onClick={() => handlePinColumn('left')}
+            onClick={() => handlePinColumn('start')}
             table={table}
           />,
           <MRT_ActionMenuItem
-            disabled={column.getIsPinned() === 'right' || !column.getCanPin()}
+            disabled={column.getIsPinned() === 'end' || !column.getCanPin()}
             icon={<PushPinIcon style={{ transform: 'rotate(-90deg)' }} />}
             key={8}
             label={localization.pinToRight}
-            onClick={() => handlePinColumn('right')}
+            onClick={() => handlePinColumn('end')}
             table={table}
           />,
           <MRT_ActionMenuItem

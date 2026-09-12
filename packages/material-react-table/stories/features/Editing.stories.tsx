@@ -847,13 +847,13 @@ export const EditingNestedData = () => {
       enableEditing
       onEditingRowSave={({ row, values }) => {
         tableData[row.index] = {
-          address: row._valuesCache.address,
+          address: values.address,
           name: {
             firstName: values.firstName,
             lastName: values['name.lastName'],
           },
-          phoneNumber: row._valuesCache.phoneNumber,
-          state: row._valuesCache.state,
+          phoneNumber: values.phoneNumber,
+          state: values.state,
         };
         setTableData([...tableData]);
       }}

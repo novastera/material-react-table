@@ -1,9 +1,10 @@
-import { type CSSProperties } from 'react';
+import { type SxProps } from '@mui/material';
+import { alpha, darken, lighten } from '@mui/material/styles';
+import { type Theme } from '@mui/material/styles';
 import { type TableCellProps } from '@mui/material/TableCell';
 import { type TooltipProps } from '@mui/material/Tooltip';
-import { alpha, darken, lighten } from '@mui/material/styles';
-import { type SxProps } from '@mui/material';
-import { type Theme } from '@mui/material/styles';
+import { type CSSProperties } from 'react';
+
 import {
   type MRT_Column,
   type MRT_Header,
@@ -23,9 +24,9 @@ const isColorMixExpression = (color: string) => color.trim().startsWith('color-m
 const toPercent = (value: number) => `${Math.round(value * 10000) / 100}%`;
 
 const colorMix = ({
+  amount,
   color,
   mixWith,
-  amount,
 }: {
   amount: number;
   color: string;
@@ -75,9 +76,9 @@ export const resolveBaseBackgroundForColorTools = (
   });
 
 export const mrtLighten = ({
+  amount,
   color,
   fallbackColor,
-  amount,
 }: {
   amount: number;
   color: string;
@@ -90,9 +91,9 @@ export const mrtLighten = ({
       : lighten(fallbackColor, amount);
 
 export const mrtDarken = ({
+  amount,
   color,
   fallbackColor,
-  amount,
 }: {
   amount: number;
   color: string;
@@ -105,9 +106,9 @@ export const mrtDarken = ({
       : darken(fallbackColor, amount);
 
 export const mrtAlpha = ({
+  amount,
   color,
   fallbackColor,
-  amount,
 }: {
   amount: number;
   color: string;
@@ -191,9 +192,9 @@ export const getCommonPinnedCellStyles = <TData extends MRT_RowData>({
           fallbackColor: baseBackgroundColorForColorTools,
         }),
         boxShadow: column
-          ? isPinned === 'left' && column.getIsLastColumn(isPinned)
+          ? isPinned === 'start' && column.getIsLastColumn(isPinned)
             ? `-4px 0 4px -4px ${alpha(theme.palette.grey[700], 0.5)} inset`
-            : isPinned === 'right' && column.getIsFirstColumn(isPinned)
+            : isPinned === 'end' && column.getIsFirstColumn(isPinned)
               ? `4px 0 4px -4px ${alpha(theme.palette.grey[700], 0.5)} inset`
               : 'none'
           : 'none',
@@ -215,7 +216,11 @@ export const getCommonMRTCellStyles = <TData extends MRT_RowData>({
   table: MRT_TableInstance<TData>;
   tableCellProps: TableCellProps;
   theme: Theme;
-}): SxProps<Theme> => {
+  //An honest array return type, not the broader SxProps<Theme> (which also permits a single
+  //object or a theme callback) - callers spread this directly into their own sx arrays
+  //(`...getCommonMRTCellStyles(...)`), which needs this to actually be an array, not just
+  //assignable to a type that might be one.
+}): SxProps<Theme>[] => {
   const {
     getState,
     options: { enableColumnVirtualization, layoutMode },
@@ -248,24 +253,41 @@ export const getCommonMRTCellStyles = <TData extends MRT_RowData>({
     widthStyles.flex = `${+(columnDef.grow || 0)} 0 auto`;
   }
 
-  const pinnedStyles: SxProps<Theme> = isColumnPinned
+  //no explicit SxProps<Theme> annotation - this is always a plain object at runtime (never a
+  //function or array), and letting TypeScript infer that concrete shape (rather than widening it
+  //to the full SxProps union) is what lets it slot into the sx array returned below without a cast.
+  const pinnedStyles = isColumnPinned
     ? {
-        ...(getCommonPinnedCellStyles({ column, table, theme }) as any),
-        left:
-          isColumnPinned === 'left'
-            ? `${column.getStart('left')}px`
+        ...getCommonPinnedCellStyles({ column, table, theme }),
+        insetInlineEnd:
+          isColumnPinned === 'end'
+            ? `${column.getAfter('end')}px`
+            : undefined,
+        insetInlineStart:
+          isColumnPinned === 'start'
+            ? `${column.getStart('start')}px`
             : undefined,
         opacity: 0.97,
         position: 'sticky',
-        right:
-          isColumnPinned === 'right'
-            ? `${column.getAfter('right')}px`
-            : undefined,
       }
     : {};
 
+  //An array, per MUI's own documented sx pattern ("using array syntax is preferred over object
+  //spreading to ensure styles are merged correctly" - MUI's sx-prop docs) - each entry here is a
+  //separate concern (base styles, pinned-column overrides, width/flex sizing), left as a
+  //MUI-native sx array instead of collapsed into one object. Every call site must therefore spread
+  //this array INTO its own sx array (`sx={[...getCommonMRTCellStyles(...), ...]}`), not
+  //object-spread it inside a single entry (`sx={[{...getCommonMRTCellStyles(...)}]}`) - the latter
+  //silently produces `{0: {...}, 1: pinnedStyles, 2: widthStyles}` (numeric keys, not CSS
+  //properties MUI's sx engine recognizes), which is exactly how `widthStyles` (flex/width/minWidth,
+  //the properties column resizing depends on) previously never reached the DOM at all despite this
+  //function computing them correctly.
   return [
     {
+      '&:focus-visible': {
+        outline: `2px solid ${table.options.mrtTheme.cellNavigationOutlineColor}`,
+        outlineOffset: '-2px',
+      },
       backgroundColor: 'inherit',
       backgroundImage: 'inherit',
       display: layoutMode?.startsWith('grid') ? 'flex' : undefined,
@@ -296,14 +318,10 @@ export const getCommonMRTCellStyles = <TData extends MRT_RowData>({
           : columnDefType !== 'group' && isColumnPinned
             ? 1
             : 0,
-      '&:focus-visible': {
-        outline: `2px solid ${table.options.mrtTheme.cellNavigationOutlineColor}`,
-        outlineOffset: '-2px',
-      },
     },
     pinnedStyles,
     widthStyles,
-  ] as SxProps<Theme>;
+  ];
 };
 
 export const getCommonToolbarStyles = <TData extends MRT_RowData>({

@@ -1,13 +1,15 @@
-import { type ReactNode, type RefObject } from 'react';
 import Box from '@mui/material/Box';
 import Skeleton from '@mui/material/Skeleton';
+import { useSelector } from '@tanstack/react-store';
+import highlightWords from 'highlight-words';
+import { type ReactNode, type RefObject } from 'react';
+
 import {
   type MRT_Cell,
   type MRT_RowData,
   type MRT_TableInstance,
 } from '../../types';
 import { parseFromValuesOrFunc } from '../../utils/utils';
-import highlightWords from 'highlight-words';
 
 const allowedTypes = ['string', 'number'];
 
@@ -27,7 +29,6 @@ export const MRT_TableBodyCellValue = <TData extends MRT_RowData>({
   table,
 }: MRT_TableBodyCellValueProps<TData>) => {
   const {
-    getState,
     options: {
       enableFilterMatchHighlighting,
       mrtTheme: { matchHighlightColor },
@@ -36,7 +37,13 @@ export const MRT_TableBodyCellValue = <TData extends MRT_RowData>({
   } = table;
   const { column, row } = cell;
   const { columnDef } = column;
-  const { globalFilter, globalFilterFn, isLoading, showSkeletons } = getState();
+  const globalFilter = useSelector(table.atoms.globalFilter);
+  const globalFilterFn = useSelector(table.atoms.globalFilterFn);
+  const isLoading = useSelector(table.atoms.isLoading);
+  const showSkeletons = useSelector(table.atoms.showSkeletons);
+  //not read directly - row.getIsGrouped()/cell.getIsGrouped() below read this live, but this
+  //component needs its own subscription to know when to re-render.
+  useSelector(table.atoms.grouping);
   const filterValue = column.getFilterValue();
 
   // MRT_TableBodyCell already renders a skeleton while loading; this standalone export needs
@@ -59,9 +66,9 @@ export const MRT_TableBodyCellValue = <TData extends MRT_RowData>({
           cell,
           column,
           row,
-          table,
           staticColumnIndex,
           staticRowIndex,
+          table,
         })
       : row.getIsGrouped() && !cell.getIsGrouped()
         ? null
@@ -70,16 +77,16 @@ export const MRT_TableBodyCellValue = <TData extends MRT_RowData>({
               cell,
               column,
               row,
-              table,
               staticColumnIndex,
               staticRowIndex,
+              table,
             })
           : undefined;
 
   const isGroupedValue = renderedCellValue !== undefined;
 
   if (!isGroupedValue) {
-    renderedCellValue = cell.renderValue() as ReactNode | number | string;
+    renderedCellValue = cell.renderValue() as number | ReactNode | string;
   }
 
   if (

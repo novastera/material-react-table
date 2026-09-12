@@ -1,39 +1,52 @@
-import { type DragEvent, type RefObject } from 'react';
+import {
+  type DraggableAttributes,
+  type DraggableSyntheticListeners,
+} from '@dnd-kit/core';
 import { type IconButtonProps } from '@mui/material/IconButton';
+import { type Ref } from 'react';
+
 import {
   type MRT_Column,
   type MRT_RowData,
   type MRT_TableInstance,
 } from '../../types';
-import { reorderColumn } from '../../utils/column.utils';
 import { parseFromValuesOrFunc } from '../../utils/utils';
 import { MRT_GrabHandleButton } from '../buttons/MRT_GrabHandleButton';
 
 export interface MRT_TableHeadCellGrabHandleProps<TData extends MRT_RowData>
   extends IconButtonProps {
+  activatorRef?: Ref<HTMLButtonElement>;
+  attributes?: DraggableAttributes;
   column: MRT_Column<TData>;
+  listeners?: DraggableSyntheticListeners;
   table: MRT_TableInstance<TData>;
-  tableHeadCellRef: RefObject<HTMLTableCellElement | null>;
 }
 
+//dnd-kit's useSortable() is called by the sortable item itself (MRT_TableHeadCell.tsx, the
+//header cell) - this component is just the drag activator (the visible handle), receiving
+//that hook's listeners/attributes/activatorRef as props to spread onto the actual button,
+//per dnd-kit's documented "separate activator node" pattern.
 export const MRT_TableHeadCellGrabHandle = <TData extends MRT_RowData>({
+  activatorRef,
+  attributes,
   column,
+  listeners,
   table,
-  tableHeadCellRef,
   ...rest
 }: MRT_TableHeadCellGrabHandleProps<TData>) => {
   const {
-    getState,
-    options: { enableColumnOrdering, muiColumnDragHandleProps },
-    setColumnOrder,
-    setColumnPinning,
-    setDraggingColumn,
-    setHoveredColumn,
+    options: { muiColumnDragHandleProps },
   } = table;
   const { columnDef } = column;
-  const { columnOrder, draggingColumn, hoveredColumn } = getState();
 
-  const iconButtonProps = {
+  //onDragStart/onDragEnd aren't forwarded here - useMRT_DragAndDrop.ts already resolves and
+  //calls these same muiColumnDragHandleProps callbacks once per drag, at the DndContext level
+  //(the button itself no longer fires any native drag event a per-instance handler could hook).
+  const {
+    onDragEnd: _onDragEnd,
+    onDragStart: _onDragStart,
+    ...iconButtonProps
+  } = {
     ...parseFromValuesOrFunc(muiColumnDragHandleProps, { column, table }),
     ...parseFromValuesOrFunc(columnDef.muiColumnDragHandleProps, {
       column,
@@ -42,49 +55,12 @@ export const MRT_TableHeadCellGrabHandle = <TData extends MRT_RowData>({
     ...rest,
   };
 
-  const handleDragStart = (event: DragEvent<HTMLButtonElement>) => {
-    iconButtonProps?.onDragStart?.(event);
-    setDraggingColumn(column);
-    try {
-      event.dataTransfer.setDragImage(
-        tableHeadCellRef.current as HTMLElement,
-        0,
-        0,
-      );
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleDragEnd = (event: DragEvent<HTMLButtonElement>) => {
-    iconButtonProps?.onDragEnd?.(event);
-    if (hoveredColumn?.id === 'drop-zone') {
-      column.toggleGrouping();
-    } else if (
-      enableColumnOrdering &&
-      hoveredColumn &&
-      hoveredColumn?.id !== draggingColumn?.id
-    ) {
-      const reorderedColumns = reorderColumn(
-        column,
-        hoveredColumn as MRT_Column<TData>,
-        columnOrder,
-      );
-      setColumnOrder(reorderedColumns);
-      setColumnPinning(({ left = [], right = [] }) => ({
-        left: reorderedColumns.filter((header) => left.includes(header)),
-        right: reorderedColumns.filter((header) => right.includes(header)),
-      }));
-    }
-    setDraggingColumn(null);
-    setHoveredColumn(null);
-  };
-
   return (
     <MRT_GrabHandleButton
       {...iconButtonProps}
-      onDragEnd={handleDragEnd}
-      onDragStart={handleDragStart}
+      activatorRef={activatorRef}
+      attributes={attributes}
+      listeners={listeners}
       table={table}
     />
   );

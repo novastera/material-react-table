@@ -1,53 +1,62 @@
-import {
-  type DragEvent,
-  type MouseEvent,
-  type RefObject,
-  memo,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
 import Skeleton from '@mui/material/Skeleton';
-import TableCell, { type TableCellProps } from '@mui/material/TableCell';
 import { useTheme } from '@mui/material/styles';
-import { MRT_TableBodyCellValue } from './MRT_TableBodyCellValue';
+import TableCell, { type TableCellProps } from '@mui/material/TableCell';
+import { useSelector } from '@tanstack/react-store';
+import { type MouseEvent, type RefObject } from 'react';
+
+import { useMRT_CellContext } from '../../hooks/useMRT_AppTable';
 import {
-  type MRT_Cell,
   type MRT_RowData,
+  type MRT_RowDragHandleProps,
   type MRT_TableInstance,
 } from '../../types';
 import {
-  isCellEditable,
   cellKeyboardShortcuts,
+  isCellEditable,
   openEditingCell,
 } from '../../utils/cell.utils';
 import { getCommonMRTCellStyles } from '../../utils/style.utils';
 import { parseFromValuesOrFunc } from '../../utils/utils';
 import { MRT_CopyButton } from '../buttons/MRT_CopyButton';
 import { MRT_EditCellTextField } from '../inputs/MRT_EditCellTextField';
+import { MRT_TableBodyCellValue } from './MRT_TableBodyCellValue';
 
-export interface MRT_TableBodyCellProps<TData extends MRT_RowData>
-  extends TableCellProps {
-  cell: MRT_Cell<TData>;
+export interface MRT_TableBodyCellProps extends TableCellProps {
   numRows?: number;
+  rowDragHandleProps?: MRT_RowDragHandleProps;
   rowRef: RefObject<HTMLTableRowElement | null>;
   staticColumnIndex?: number;
   staticRowIndex: number;
-  table: MRT_TableInstance<TData>;
 }
 
+//cell/table are read from context (see the MRT_AppCell wrapper in MRT_TableBodyRow.tsx's
+//cell-mapping loop) rather than received as props - the cell/column/row-keyed atoms this
+//component used to bare-subscribe to directly (actionCell/columnResizing/creatingRow/
+//draggingColumn/draggingRow/editingCell/editingRow/hoveredColumn/hoveredRow) are now subscribed,
+//narrowed by cell.id/column.id/row.id, at that same wrapper boundary instead
+//(migration-render.md §13's resolution) - this cell re-renders only when one of those becomes/
+//stops being relevant to IT specifically, not on any cell's. The structural/global atoms below
+//(columnPinning/density/grouping/isLoading/showSkeletons) stay as bare subscriptions - narrowing
+//wouldn't help them.
 export const MRT_TableBodyCell = <TData extends MRT_RowData>({
-  cell,
   numRows,
+  rowDragHandleProps,
   rowRef,
   staticColumnIndex,
   staticRowIndex,
-  table,
   ...rest
-}: MRT_TableBodyCellProps<TData>) => {
+}: MRT_TableBodyCellProps) => {
   const theme = useTheme();
+  const cell = useMRT_CellContext<TData>();
+  //cell.table (not useMRT_TableContext()) - the stable core reference react-compiler.md itself
+  //documents (distinct from the wrapper useMRT_TableContext() returns, which additionally carries
+  //AppCell/AppRow/AppTable/AppHeader/AppFooter). Safe and preferable here specifically because
+  //this component is a leaf - it reads atoms/options/getState/refs but never itself needs to wrap
+  //further AppCell/AppRow boundaries, which only exist on the wrapper. Cast needed because
+  //MRT_Cell's own `.table` field (unlike `.row`/`.column`) wasn't redeclared to point at
+  //MRT_TableInstance - same type-vs-runtime gap as the useMRT_TableInstance.ts `table` cast.
+  const table = cell.table as unknown as MRT_TableInstance<TData>;
   const {
-    getState,
     options: {
       columnResizeDirection,
       columnResizeMode,
@@ -55,31 +64,38 @@ export const MRT_TableBodyCell = <TData extends MRT_RowData>({
       editDisplayMode,
       enableCellActions,
       enableClickToCopy,
-      enableColumnOrdering,
       enableColumnPinning,
-      enableGrouping,
       enableKeyboardShortcuts,
       layoutMode,
       mrtTheme: { draggingBorderColor },
       muiSkeletonProps,
       muiTableBodyCellProps,
     },
-    setHoveredColumn,
+    refs: { actionCellRef },
   } = table;
+  //not read directly - getCommonMRTCellStyles below reads column.getIsPinned() (backed by this
+  //atom) for its sticky-positioning/opacity calculation, a plain utility function that can't
+  //subscribe itself - this component needs the subscription instead.
+  useSelector(table.atoms.columnPinning);
+  const density = useSelector(table.atoms.density);
+  //not read directly - row.getIsGrouped()/cell.getIsGrouped() below read this live.
+  useSelector(table.atoms.grouping);
+  const isLoading = useSelector(table.atoms.isLoading);
+  const showSkeletons = useSelector(table.atoms.showSkeletons);
+  //cell/column/row-keyed atoms - no longer subscribed here (see file comment above); the wrapping
+  //MRT_AppCell already re-renders this component when any of these become/stop being relevant to
+  //THIS cell, so a plain live read is correct and sufficient once re-rendered.
   const {
     actionCell,
-    columnSizingInfo,
+    columnResizing,
     creatingRow,
-    density,
     draggingColumn,
     draggingRow,
     editingCell,
     editingRow,
     hoveredColumn,
     hoveredRow,
-    isLoading,
-    showSkeletons,
-  } = getState();
+  } = table.getState();
   const { column, row } = cell;
   const { columnDef } = column;
   const { columnDefType } = columnDef;
@@ -98,18 +114,24 @@ export const MRT_TableBodyCell = <TData extends MRT_RowData>({
     table,
   });
 
-  const [skeletonWidth, setSkeletonWidth] = useState(100);
-  useEffect(() => {
-    if ((!isLoading && !showSkeletons) || skeletonWidth !== 100) return;
+  //deterministic pseudo-randomness from cell.id (instead of Math.random() in an effect) so
+  //skeleton widths still vary per cell, without needing state that persists across renders
+  const skeletonWidth = (() => {
     const size = column.getSize();
-    setSkeletonWidth(
-      columnDefType === 'display'
-        ? size / 2
-        : Math.round(Math.random() * (size - size / 3) + size / 3),
-    );
-  }, [isLoading, showSkeletons]);
+    if (columnDefType === 'display') return size / 2;
+    let hash = 0;
+    for (let i = 0; i < cell.id.length; i++) {
+      hash = (hash * 31 + cell.id.charCodeAt(i)) | 0;
+    }
+    const unitInterval = (hash >>> 0) / 0xffffffff;
+    return Math.round(unitInterval * (size - size / 3) + size / 3);
+  })();
 
-  const draggingBorders = useMemo(() => {
+  //plain computed value (not useMemo) - the previous manual dependency array didn't match what
+  //this actually reads (column, columnResizeDirection, etc. were used but not listed), which
+  //made React Compiler bail out of optimizing this whole component rather than risk a stale
+  //value. Letting the compiler infer the real dependencies itself is both correct and simpler.
+  const draggingBorders = (() => {
     const isDraggingColumn = draggingColumn?.id === column.id;
     const isHoveredColumn = hoveredColumn?.id === column.id;
     const isDraggingRow = draggingRow?.id === row.id;
@@ -117,7 +139,7 @@ export const MRT_TableBodyCell = <TData extends MRT_RowData>({
     const isFirstColumn = column.getIsFirstColumn();
     const isLastColumn = column.getIsLastColumn();
     const isLastRow = numRows && staticRowIndex === numRows - 1;
-    const isResizingColumn = columnSizingInfo.isResizingColumn === column.id;
+    const isResizingColumn = columnResizing.isResizingColumn === column.id;
     const showResizeBorder =
       isResizingColumn && columnResizeMode === 'onChange';
 
@@ -156,14 +178,7 @@ export const MRT_TableBodyCell = <TData extends MRT_RowData>({
           borderTop: isDraggingRow || isHoveredRow ? borderStyle : undefined,
         }
       : undefined;
-  }, [
-    columnSizingInfo.isResizingColumn,
-    draggingColumn,
-    draggingRow,
-    hoveredColumn,
-    hoveredRow,
-    staticRowIndex,
-  ]);
+  })();
 
   const isColumnPinned =
     enableColumnPinning &&
@@ -195,9 +210,9 @@ export const MRT_TableBodyCell = <TData extends MRT_RowData>({
 
   const cellValueProps = {
     cell,
-    table,
     staticColumnIndex,
     staticRowIndex,
+    table,
   };
 
   const handleDoubleClick = (event: MouseEvent<HTMLTableCellElement>) => {
@@ -205,30 +220,12 @@ export const MRT_TableBodyCell = <TData extends MRT_RowData>({
     openEditingCell({ cell, table });
   };
 
-  const handleDragEnter = (e: DragEvent<HTMLTableCellElement>) => {
-    tableCellProps?.onDragEnter?.(e);
-    if (enableGrouping && hoveredColumn?.id === 'drop-zone') {
-      setHoveredColumn(null);
-    }
-    if (enableColumnOrdering && draggingColumn) {
-      setHoveredColumn(
-        columnDef.enableColumnOrdering !== false ? column : null,
-      );
-    }
-  };
-
-  const handleDragOver = (e: DragEvent) => {
-    if (columnDef.enableColumnOrdering !== false) {
-      e.preventDefault();
-    }
-  };
-
   const handleContextMenu = (e: MouseEvent<HTMLTableCellElement>) => {
     tableCellProps?.onContextMenu?.(e);
     if (isRightClickable) {
       e.preventDefault();
       table.setActionCell(cell);
-      table.refs.actionCellRef.current = e.currentTarget;
+      actionCellRef.current = e.currentTarget;
     }
   };
 
@@ -249,11 +246,9 @@ export const MRT_TableBodyCell = <TData extends MRT_RowData>({
       data-pinned={!!isColumnPinned || undefined}
       tabIndex={enableKeyboardShortcuts ? 0 : undefined}
       {...tableCellProps}
-      onKeyDown={handleKeyDown}
       onContextMenu={handleContextMenu}
       onDoubleClick={handleDoubleClick}
-      onDragEnter={handleDragEnter}
-      onDragOver={handleDragOver}
+      onKeyDown={handleKeyDown}
       sx={[
         (theme) => ({
           '&:hover': {
@@ -293,14 +288,17 @@ export const MRT_TableBodyCell = <TData extends MRT_RowData>({
           textOverflow: columnDefType !== 'display' ? 'ellipsis' : undefined,
           whiteSpace:
             row.getIsPinned() || density === 'compact' ? 'nowrap' : 'normal',
-          ...getCommonMRTCellStyles({
-            column,
-            table,
-            tableCellProps,
-            theme,
-          }),
-          ...draggingBorders,
         }),
+        //spread as separate sx array entries, not object-spread into the callback above - see
+        //getCommonMRTCellStyles's own comment (MUI's documented sx array-merging behavior; object
+        //spread silently drops these into numeric keys the sx engine doesn't recognize).
+        ...getCommonMRTCellStyles({
+          column,
+          table,
+          tableCellProps,
+          theme,
+        }),
+        draggingBorders,
         ...(Array.isArray(tableCellProps.sx)
           ? tableCellProps.sx
           : [tableCellProps.sx]),
@@ -327,6 +325,7 @@ export const MRT_TableBodyCell = <TData extends MRT_RowData>({
               column,
               renderedCellValue: cell.renderValue() as any,
               row,
+              rowDragHandleProps,
               rowRef,
               staticColumnIndex,
               staticRowIndex,
@@ -349,8 +348,3 @@ export const MRT_TableBodyCell = <TData extends MRT_RowData>({
     </TableCell>
   );
 };
-
-export const Memo_MRT_TableBodyCell = memo(
-  MRT_TableBodyCell,
-  (prev, next) => next.cell === prev.cell,
-) as typeof MRT_TableBodyCell;

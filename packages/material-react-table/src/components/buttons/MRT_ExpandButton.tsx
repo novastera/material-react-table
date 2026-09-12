@@ -1,7 +1,9 @@
-import { type MouseEvent } from 'react';
 import IconButton, { type IconButtonProps } from '@mui/material/IconButton';
-import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
+import Tooltip from '@mui/material/Tooltip';
+import { useSelector } from '@tanstack/react-store';
+import { type MouseEvent } from 'react';
+
 import {
   type MRT_Row,
   type MRT_RowData,
@@ -24,7 +26,6 @@ export const MRT_ExpandButton = <TData extends MRT_RowData>({
 }: MRT_ExpandButtonProps<TData>) => {
   const theme = useTheme();
   const {
-    getState,
     options: {
       icons: { ExpandMoreIcon },
       localization,
@@ -33,7 +34,9 @@ export const MRT_ExpandButton = <TData extends MRT_RowData>({
       renderDetailPanel,
     },
   } = table;
-  const { density } = getState();
+  const density = useSelector(table.atoms.density);
+  //not read directly - row.getCanExpand()/getIsExpanded() below read this live.
+  useSelector(table.atoms.expanded);
 
   const iconButtonProps = parseFromValuesOrFunc(muiExpandButtonProps, {
     row,
@@ -68,12 +71,15 @@ export const MRT_ExpandButton = <TData extends MRT_RowData>({
           {...iconButtonProps}
           onClick={handleToggleExpand}
           sx={[
+            //React Compiler can't lower a computed object key built from a conditional
+            //expression, so the RTL-dependent margin side is split into its own object and
+            //spread in, instead of `[theme.direction === 'rtl' ? 'mr' : 'ml']: ...`.
             (theme) => ({
+              ...(theme.direction === 'rtl' || positionExpandColumn === 'last'
+                ? { mr: `${row.depth * 16}px` }
+                : { ml: `${row.depth * 16}px` }),
               height: density === 'compact' ? '1.75rem' : '2.25rem',
               opacity: !canExpand && !detailPanel ? 0.3 : 1,
-              [theme.direction === 'rtl' || positionExpandColumn === 'last'
-                ? 'mr'
-                : 'ml']: `${row.depth * 16}px`,
               width: density === 'compact' ? '1.75rem' : '2.25rem',
             }),
             ...(Array.isArray(iconButtonProps?.sx)

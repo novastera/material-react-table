@@ -1,5 +1,5 @@
 import TableRow, { type TableRowProps } from '@mui/material/TableRow';
-import { MRT_TableFooterCell } from './MRT_TableFooterCell';
+
 import {
   type MRT_ColumnVirtualizer,
   type MRT_Header,
@@ -9,6 +9,7 @@ import {
   type MRT_VirtualItem,
 } from '../../types';
 import { parseFromValuesOrFunc } from '../../utils/utils';
+import { MRT_TableFooterCell } from './MRT_TableFooterCell';
 
 export interface MRT_TableFooterRowProps<TData extends MRT_RowData>
   extends TableRowProps {
@@ -80,15 +81,25 @@ export const MRT_TableFooterRow = <TData extends MRT_RowData>({
               .index;
             footer = footerGroup.headers[staticColumnIndex];
           }
-
-          return footer ? (
-            <MRT_TableFooterCell
-              footer={footer}
+          if (!footer) return null;
+          //narrowed by column.id - see MRT_TableFooterCell.tsx's own comment.
+          return (
+            //footer cast to any - same type-vs-runtime gap as MRT_TableHeadRow.tsx's header cast.
+            <table.AppFooter
+              header={footer as any}
               key={footer.id}
-              staticColumnIndex={staticColumnIndex}
-              table={table}
-            />
-          ) : null;
+              selector={(state) => ({
+                isDraggingColumn: state.draggingColumn?.id === footer.column.id,
+                isHoveredColumn: state.hoveredColumn?.id === footer.column.id,
+                isResizingColumn:
+                  state.columnResizing?.isResizingColumn === footer.column.id,
+              })}
+            >
+              {() => (
+                <MRT_TableFooterCell staticColumnIndex={staticColumnIndex} />
+              )}
+            </table.AppFooter>
+          );
         },
       )}
       {virtualPaddingRight ? (

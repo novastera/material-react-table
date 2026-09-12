@@ -1,6 +1,6 @@
-import TableRow, { type TableRowProps } from '@mui/material/TableRow';
 import { alpha } from '@mui/material/styles';
-import { MRT_TableHeadCell } from './MRT_TableHeadCell';
+import TableRow, { type TableRowProps } from '@mui/material/TableRow';
+
 import {
   type MRT_ColumnVirtualizer,
   type MRT_Header,
@@ -10,6 +10,7 @@ import {
   type MRT_VirtualItem,
 } from '../../types';
 import { parseFromValuesOrFunc } from '../../utils/utils';
+import { MRT_TableHeadCell } from './MRT_TableHeadCell';
 
 export interface MRT_TableHeadRowProps<TData extends MRT_RowData>
   extends TableRowProps {
@@ -74,16 +75,31 @@ export const MRT_TableHeadRow = <TData extends MRT_RowData>({
               .index;
             header = headerGroup.headers[staticColumnIndex];
           }
-
-          return header ? (
-            <MRT_TableHeadCell
-              columnVirtualizer={columnVirtualizer}
-              header={header}
+          if (!header) return null;
+          //narrowed by column.id - see MRT_TableHeadCell.tsx's own comment for which atoms this
+          //covers and why columnPinning/grouping/sorting are deliberately left out for now.
+          return (
+            //header cast to any - table.AppHeader expects table-core's raw Header, structurally
+            //distinct from MRT_Header (same type-vs-runtime gap as MRT_TableBodyRow.tsx's
+            //cell-as-any cast for table.AppCell).
+            <table.AppHeader
+              header={header as any}
               key={header.id}
-              staticColumnIndex={staticColumnIndex}
-              table={table}
-            />
-          ) : null;
+              selector={(state) => ({
+                isDraggingColumn: state.draggingColumn?.id === header.column.id,
+                isHoveredColumn: state.hoveredColumn?.id === header.column.id,
+                isResizingColumn:
+                  state.columnResizing?.isResizingColumn === header.column.id,
+              })}
+            >
+              {() => (
+                <MRT_TableHeadCell
+                  columnVirtualizer={columnVirtualizer}
+                  staticColumnIndex={staticColumnIndex}
+                />
+              )}
+            </table.AppHeader>
+          );
         },
       )}
       {virtualPaddingRight ? (

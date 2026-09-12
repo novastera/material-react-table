@@ -1,6 +1,9 @@
 import Box from '@mui/material/Box';
 import Divider, { type DividerProps } from '@mui/material/Divider';
+import { useSelector } from '@tanstack/react-store';
+
 import {
+  type MRT_ColumnResizingState,
   type MRT_Header,
   type MRT_RowData,
   type MRT_TableInstance,
@@ -18,11 +21,11 @@ export const MRT_TableHeadCellResizeHandle = <TData extends MRT_RowData>({
   ...rest
 }: MRT_TableHeadCellResizeHandleProps<TData>) => {
   const {
-    getState,
     options: { columnResizeDirection, columnResizeMode },
-    setColumnSizingInfo,
+    setColumnResizing,
   } = table;
-  const { density } = getState();
+  const density = useSelector(table.atoms.density);
+  const columnResizing = useSelector(table.atoms.columnResizing);
   const { column } = header;
 
   const handler = header.getResizeHandler();
@@ -40,7 +43,7 @@ export const MRT_TableHeadCellResizeHandle = <TData extends MRT_RowData>({
     <Box
       className="Mui-TableHeadCell-ResizeHandle-Wrapper"
       onDoubleClick={() => {
-        setColumnSizingInfo((old) => ({
+        setColumnResizing((old: MRT_ColumnResizingState) => ({
           ...old,
           isResizingColumn: false,
         }));
@@ -52,7 +55,7 @@ export const MRT_TableHeadCellResizeHandle = <TData extends MRT_RowData>({
         transform:
           column.getIsResizing() && columnResizeMode === 'onEnd'
             ? `translateX(${(columnResizeDirection === 'rtl' ? -1 : 1) *
-            (getState().columnSizingInfo.deltaOffset ?? 0)
+            (columnResizing.deltaOffset ?? 0)
             }px)`
             : undefined,
       }}

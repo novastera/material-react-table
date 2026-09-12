@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import FormHelperText from '@mui/material/FormHelperText';
 import Slider, { type SliderProps } from '@mui/material/Slider';
 import Stack from '@mui/material/Stack';
@@ -7,7 +7,7 @@ import {
   type MRT_RowData,
   type MRT_TableInstance,
 } from '../../types';
-import { parseFromValuesOrFunc } from '../../utils/utils';
+import { parseFromValuesOrFunc, setRefMapEntry } from '../../utils/utils';
 
 export interface MRT_FilterRangeSliderProps<TData extends MRT_RowData>
   extends SliderProps {
@@ -21,7 +21,12 @@ export const MRT_FilterRangeSlider = <TData extends MRT_RowData>({
   ...rest
 }: MRT_FilterRangeSliderProps<TData>) => {
   const {
-    options: { enableColumnFilterModes, localization, muiFilterSliderProps },
+    options: {
+      enableColumnFilterModes,
+      enableFacetedValues,
+      localization,
+      muiFilterSliderProps,
+    },
     refs: { filterInputRefs },
   } = table;
   const { column } = header;
@@ -38,10 +43,14 @@ export const MRT_FilterRangeSlider = <TData extends MRT_RowData>({
     ...rest,
   };
 
+  //v9 always registers the faceted row models (features can't be conditionally registered
+  //per-instance); gate the actual computation here so enableFacetedValues: false still means
+  //what it says instead of computing min/max for every range column regardless
   let [min, max] =
     sliderProps.min !== undefined && sliderProps.max !== undefined
       ? [sliderProps.min, sliderProps.max]
-      : (column.getFacetedMinMaxValues() ?? [0, 1]);
+      : (enableFacetedValues ? column.getFacetedMinMaxValues() : undefined) ??
+        [0, 1];
 
   //fix potential TanStack Table bugs where min or max is an array
   if (Array.isArray(min)) min = min[0];
@@ -52,7 +61,22 @@ export const MRT_FilterRangeSlider = <TData extends MRT_RowData>({
   const [filterValues, setFilterValues] = useState([min, max]);
   const columnFilterValue = column.getFilterValue();
 
-  const isMounted = useRef(false);
+  //adjust filterValues when the external filter value (or the min/max bounds) changes, skipping
+  //the first render since filterValues is already initialized from the same min/max above - see
+  //https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [prevSyncKey, setPrevSyncKey] = useState({ columnFilterValue, max, min });
+  if (
+    prevSyncKey.columnFilterValue !== columnFilterValue ||
+    prevSyncKey.min !== min ||
+    prevSyncKey.max !== max
+  ) {
+    setPrevSyncKey({ columnFilterValue, max, min });
+    if (columnFilterValue === undefined) {
+      setFilterValues([min, max]);
+    } else if (Array.isArray(columnFilterValue)) {
+      setFilterValues(columnFilterValue);
+    }
+  }
 
   // prevent moving the focus to the next/prev cell when using the arrow keys
   const handleKeyDown = (event: React.KeyboardEvent) => {
@@ -60,17 +84,6 @@ export const MRT_FilterRangeSlider = <TData extends MRT_RowData>({
       event.stopPropagation();
     }
   };
-
-  useEffect(() => {
-    if (isMounted.current) {
-      if (columnFilterValue === undefined) {
-        setFilterValues([min, max]);
-      } else if (Array.isArray(columnFilterValue)) {
-        setFilterValues(columnFilterValue);
-      }
-    }
-    isMounted.current = true;
-  }, [columnFilterValue, min, max]);
 
   return (
     <Stack>
@@ -99,7 +112,7 @@ export const MRT_FilterRangeSlider = <TData extends MRT_RowData>({
           input: {
             ref: (node) => {
               if (node) {
-                filterInputRefs.current![`${column.id}-0`] = node;
+                setRefMapEntry(filterInputRefs, `${column.id}-0`, node);
                 // @ts-expect-error
                 if (sliderProps?.slotProps?.input?.ref) {
                   //@ts-expect-error

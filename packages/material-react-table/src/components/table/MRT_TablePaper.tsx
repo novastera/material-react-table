@@ -1,10 +1,14 @@
+import { closestCenter, DndContext } from '@dnd-kit/core';
 import Paper, { type PaperProps } from '@mui/material/Paper';
 import { useTheme } from '@mui/material/styles';
-import { MRT_TableContainer } from './MRT_TableContainer';
+import { useSelector } from '@tanstack/react-store';
+
+import { useMRT_DragAndDrop } from '../../hooks/useMRT_DragAndDrop';
 import { type MRT_RowData, type MRT_TableInstance } from '../../types';
-import { parseFromValuesOrFunc } from '../../utils/utils';
+import { mergeRefs, parseFromValuesOrFunc } from '../../utils/utils';
 import { MRT_BottomToolbar } from '../toolbar/MRT_BottomToolbar';
 import { MRT_TopToolbar } from '../toolbar/MRT_TopToolbar';
+import { MRT_TableContainer } from './MRT_TableContainer';
 
 export interface MRT_TablePaperProps<TData extends MRT_RowData>
   extends PaperProps {
@@ -16,7 +20,6 @@ export const MRT_TablePaper = <TData extends MRT_RowData>({
   ...rest
 }: MRT_TablePaperProps<TData>) => {
   const {
-    getState,
     options: {
       enableBottomToolbar,
       enableTopToolbar,
@@ -27,7 +30,9 @@ export const MRT_TablePaper = <TData extends MRT_RowData>({
     },
     refs: { tablePaperRef },
   } = table;
-  const { isFullScreen } = getState();
+  const isFullScreen = useSelector(table.atoms.isFullScreen);
+  const { handleDragEnd, handleDragOver, handleDragStart, modifiers, sensors } =
+    useMRT_DragAndDrop(table);
 
   const paperProps = {
     ...parseFromValuesOrFunc(muiTablePaperProps, { table }),
@@ -41,13 +46,7 @@ export const MRT_TablePaper = <TData extends MRT_RowData>({
       elevation={2}
       onKeyDown={(e) => e.key === 'Escape' && table.setIsFullScreen(false)}
       {...paperProps}
-      ref={(ref: HTMLDivElement) => {
-        tablePaperRef.current = ref;
-        if (paperProps?.ref) {
-          //@ts-expect-error
-          paperProps.ref.current = ref;
-        }
-      }}
+      ref={mergeRefs(tablePaperRef, paperProps?.ref)}
       style={{
         ...(isFullScreen
           ? {
@@ -77,15 +76,24 @@ export const MRT_TablePaper = <TData extends MRT_RowData>({
         ...(Array.isArray(paperProps?.sx) ? paperProps.sx : [paperProps?.sx]),
       ]}
     >
-      {enableTopToolbar &&
-        (parseFromValuesOrFunc(renderTopToolbar, { table }) ?? (
-          <MRT_TopToolbar table={table} />
-        ))}
-      <MRT_TableContainer table={table} />
-      {enableBottomToolbar &&
-        (parseFromValuesOrFunc(renderBottomToolbar, { table }) ?? (
-          <MRT_BottomToolbar table={table} />
-        ))}
+      <DndContext
+        collisionDetection={closestCenter}
+        modifiers={modifiers}
+        onDragEnd={handleDragEnd}
+        onDragOver={handleDragOver}
+        onDragStart={handleDragStart}
+        sensors={sensors}
+      >
+        {enableTopToolbar &&
+          (parseFromValuesOrFunc(renderTopToolbar, { table }) ?? (
+            <MRT_TopToolbar table={table} />
+          ))}
+        <MRT_TableContainer table={table} />
+        {enableBottomToolbar &&
+          (parseFromValuesOrFunc(renderBottomToolbar, { table }) ?? (
+            <MRT_BottomToolbar table={table} />
+          ))}
+      </DndContext>
     </Paper>
   );
 };

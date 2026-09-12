@@ -1,68 +1,79 @@
-import { type DragEvent, useMemo, useCallback } from 'react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import Box from '@mui/material/Box';
-import TableCell, { type TableCellProps } from '@mui/material/TableCell';
 import { useTheme } from '@mui/material/styles';
-import { type Theme } from '@mui/material/styles';
+import TableCell, { type TableCellProps } from '@mui/material/TableCell';
+import { useSelector } from '@tanstack/react-store';
+
+import { useMRT_HeaderContext } from '../../hooks/useMRT_AppTable';
+import {
+  type MRT_ColumnVirtualizer,
+  type MRT_RowData,
+  type MRT_TableInstance,
+} from '../../types';
+import { cellKeyboardShortcuts } from '../../utils/cell.utils';
+import { getCommonMRTCellStyles } from '../../utils/style.utils';
+import { parseFromValuesOrFunc, setRefMapEntry } from '../../utils/utils';
 import { MRT_TableHeadCellColumnActionsButton } from './MRT_TableHeadCellColumnActionsButton';
 import { MRT_TableHeadCellFilterContainer } from './MRT_TableHeadCellFilterContainer';
 import { MRT_TableHeadCellFilterLabel } from './MRT_TableHeadCellFilterLabel';
 import { MRT_TableHeadCellGrabHandle } from './MRT_TableHeadCellGrabHandle';
 import { MRT_TableHeadCellResizeHandle } from './MRT_TableHeadCellResizeHandle';
 import { MRT_TableHeadCellSortLabel } from './MRT_TableHeadCellSortLabel';
-import {
-  type MRT_ColumnVirtualizer,
-  type MRT_Header,
-  type MRT_RowData,
-  type MRT_TableInstance,
-} from '../../types';
-import { getCommonMRTCellStyles } from '../../utils/style.utils';
-import { parseFromValuesOrFunc } from '../../utils/utils';
-import { cellKeyboardShortcuts } from '../../utils/cell.utils';
 
-export interface MRT_TableHeadCellProps<TData extends MRT_RowData>
-  extends TableCellProps {
+export interface MRT_TableHeadCellProps extends TableCellProps {
   columnVirtualizer?: MRT_ColumnVirtualizer;
-  header: MRT_Header<TData>;
   staticColumnIndex?: number;
-  table: MRT_TableInstance<TData>;
 }
 
+//header/table are read from context (see the table.AppHeader wrapper in MRT_TableHeadRow.tsx's
+//header-mapping loop) rather than received as props - draggingColumn/hoveredColumn/columnResizing
+//(simple, safe "is this the one" checks with no cross-column interdependence) are now subscribed,
+//narrowed by column.id, at that same wrapper boundary instead. columnPinning/grouping/sorting stay
+//bare for now - each has cross-column interdependence (sticky-offset chains, multi-sort priority
+//display, drag-handle visibility depending on OTHER columns' grouping) that needs more careful
+//per-atom verification before narrowing safely - see migration-render.md §13's follow-up.
 export const MRT_TableHeadCell = <TData extends MRT_RowData>({
   columnVirtualizer,
-  header,
   staticColumnIndex,
-  table,
   ...rest
-}: MRT_TableHeadCellProps<TData>) => {
+}: MRT_TableHeadCellProps) => {
   const theme = useTheme();
+  const header = useMRT_HeaderContext<TData>();
+  //cast needed - MRT_Header's own `.table` field wasn't redeclared to point at MRT_TableInstance,
+  //same type-vs-runtime gap as MRT_TableBodyCell.tsx's cell.table cast.
+  const table = header.table as unknown as MRT_TableInstance<TData>;
   const {
-    getState,
     options: {
       columnFilterDisplayMode,
       columnResizeDirection,
       columnResizeMode,
-      enableKeyboardShortcuts,
       enableColumnActions,
       enableColumnDragging,
       enableColumnOrdering,
       enableColumnPinning,
       enableGrouping,
+      enableKeyboardShortcuts,
       enableMultiSort,
       layoutMode,
       mrtTheme: { draggingBorderColor },
       muiTableHeadCellProps,
     },
     refs: { tableHeadCellRefs },
-    setHoveredColumn,
   } = table;
-  const {
-    columnSizingInfo,
-    density,
-    draggingColumn,
-    grouping,
-    hoveredColumn,
-    showColumnFilters,
-  } = getState();
+  //not read directly - getCommonMRTCellStyles below reads column.getIsPinned() (backed by this
+  //atom) for its sticky-positioning/opacity calculation, a plain utility function that can't
+  //subscribe itself - this component needs the subscription instead.
+  useSelector(table.atoms.columnPinning);
+  const density = useSelector(table.atoms.density);
+  const grouping = useSelector(table.atoms.grouping);
+  const showColumnFilters = useSelector(table.atoms.showColumnFilters);
+  //not read directly - column.getIsSorted() below (aria-sort/data-sort) reads this live.
+  useSelector(table.atoms.sorting);
+  //column-keyed atoms - no longer subscribed here (see file comment above); the wrapping
+  //table.AppHeader already re-renders this component when any of these become/stop being
+  //relevant to THIS column, so a plain live read is correct and sufficient once re-rendered.
+  const { columnResizing, draggingColumn, hoveredColumn } = table.getState();
   const { column } = header;
   const { columnDef } = column;
   const { columnDefType } = columnDef;
@@ -94,17 +105,14 @@ export const MRT_TableHeadCell = <TData extends MRT_RowData>({
         columnDef.enableGrouping !== false &&
         !grouping.includes(column.id)));
 
-  const headerPL = useMemo(() => {
-    let pl = 0;
-    if (column.getCanSort()) pl += 1;
-    if (showColumnActions) pl += 1.75;
-    if (showDragHandle) pl += 1.5;
-    return pl;
-  }, [showColumnActions, showDragHandle]);
+  let headerPL = 0;
+  if (column.getCanSort()) headerPL += 1;
+  if (showColumnActions) headerPL += 1.75;
+  if (showDragHandle) headerPL += 1.5;
 
-  const draggingBorders = useMemo(() => {
+  const draggingBorders = (() => {
     const showResizeBorder =
-      columnSizingInfo.isResizingColumn === column.id &&
+      columnResizing.isResizingColumn === column.id &&
       columnResizeMode === 'onChange' &&
       !header.subHeaders.length;
 
@@ -121,57 +129,50 @@ export const MRT_TableHeadCell = <TData extends MRT_RowData>({
         ? { borderRight: borderStyle }
         : { borderLeft: borderStyle };
     }
-    const draggingBorders = borderStyle
+
+    return borderStyle
       ? {
           borderLeft: borderStyle,
           borderRight: borderStyle,
           borderTop: borderStyle,
         }
       : undefined;
+  })();
 
-    return draggingBorders;
-  }, [draggingColumn, hoveredColumn, columnSizingInfo.isResizingColumn]);
-
-  const handleDragEnter = (_e: DragEvent) => {
-    if (enableGrouping && hoveredColumn?.id === 'drop-zone') {
-      setHoveredColumn(null);
-    }
-    if (enableColumnOrdering && draggingColumn && columnDefType !== 'group') {
-      setHoveredColumn(
-        columnDef.enableColumnOrdering !== false ? column : null,
-      );
-    }
-  };
-
-  const handleDragOver = (e: DragEvent) => {
-    if (columnDef.enableColumnOrdering !== false) {
-      e.preventDefault();
-    }
-  };
+  //the header cell is the actual dnd-kit sortable item for column drag-and-drop - see
+  //useMRT_DragAndDrop.ts for the shared DndContext this participates in. Only disabled for
+  //group-type headers (spanning multiple sub-columns, never a valid drag source or drop target -
+  //matching this file's previous handleDragEnter check). Not gated on showDragHandle/
+  //enableColumnOrdering here: a column with no grab handle of its own (showDragHandle false) or
+  //that opted out of ordering can still be a legitimate drop target/insertion point for OTHER
+  //columns - useMRT_DragAndDrop.ts's onDragOver is what decides target-acceptance per column, not
+  //this registration. Always called unconditionally (Rules of Hooks).
+  const { attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition } =
+    useSortable({
+      data: { column, type: 'column' },
+      disabled: columnDefType === 'group',
+      id: column.id,
+    });
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTableCellElement>) => {
     tableCellProps?.onKeyDown?.(event);
     cellKeyboardShortcuts({
-      event,
       cellValue: header.column.columnDef.header,
-      table,
+      event,
       header,
+      table,
     });
   };
 
-  const handleRef = useCallback(
-    (node: HTMLTableCellElement) => {
-      if (node) {
-        if (tableHeadCellRefs.current) {
-          tableHeadCellRefs.current[column.id] = node;
-        }
-        if (columnDefType !== 'group') {
-          columnVirtualizer?.measureElement?.(node);
-        }
+  const handleRef = (node: HTMLTableCellElement | null) => {
+    setNodeRef(node);
+    if (node) {
+      setRefMapEntry(tableHeadCellRefs, column.id, node);
+      if (columnDefType !== 'group') {
+        columnVirtualizer?.measureElement?.(node);
       }
-    },
-    [column.id, columnDefType, columnVirtualizer, tableHeadCellRefs],
-  );
+    }
+  };
 
   const HeaderElement =
     parseFromValuesOrFunc(columnDef.Header, {
@@ -201,14 +202,20 @@ export const MRT_TableHeadCell = <TData extends MRT_RowData>({
       data-index={staticColumnIndex}
       data-pinned={!!isColumnPinned || undefined}
       data-sort={column.getIsSorted() || undefined}
-      onDragEnter={handleDragEnter}
-      onDragOver={handleDragOver}
       ref={handleRef}
       tabIndex={enableKeyboardShortcuts ? 0 : undefined}
       {...tableCellProps}
       onKeyDown={handleKeyDown}
+      style={{
+        //see MRT_TableBodyRow.tsx's identical comment - useSortable() only computes the drag-shift
+        //transform/transition, it doesn't apply them; without this the header cell never visually
+        //moves during a column drag even though dnd-kit tracks it correctly internally.
+        transform: transform ? CSS.Transform.toString(transform) : undefined,
+        transition,
+        ...tableCellProps?.style,
+      }}
       sx={[
-        (theme: Theme) => ({
+        {
           '& :hover': {
             '.MuiButtonBase-root': {
               opacity: 1,
@@ -242,15 +249,18 @@ export const MRT_TableHeadCell = <TData extends MRT_RowData>({
           userSelect:
             enableMultiSort && column.getCanSort() ? 'none' : undefined,
           verticalAlign: 'top',
-          ...getCommonMRTCellStyles({
-            column,
-            header,
-            table,
-            tableCellProps,
-            theme,
-          }),
-          ...draggingBorders,
+        },
+        //spread as separate sx array entries, not object-spread into the object above - see
+        //getCommonMRTCellStyles's own comment (MUI's documented sx array-merging behavior; object
+        //spread silently drops these into numeric keys the sx engine doesn't recognize).
+        ...getCommonMRTCellStyles({
+          column,
+          header,
+          table,
+          tableCellProps,
+          theme,
         }),
+        draggingBorders,
         ...(Array.isArray(tableCellProps.sx)
           ? tableCellProps.sx
           : [tableCellProps.sx]),
@@ -329,11 +339,11 @@ export const MRT_TableHeadCell = <TData extends MRT_RowData>({
                 >
                   {showDragHandle && (
                     <MRT_TableHeadCellGrabHandle
+                      activatorRef={setActivatorNodeRef}
+                      attributes={attributes}
                       column={column}
+                      listeners={listeners}
                       table={table}
-                      tableHeadCellRef={{
-                        current: tableHeadCellRefs.current?.[column.id]!,
-                      }}
                     />
                   )}
                   {showColumnActions && (

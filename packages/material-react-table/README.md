@@ -1,4 +1,4 @@
-# Material React Table V3
+# Material React Table V5
 
 View [Documentation](https://www.material-react-table.com/)
 
@@ -34,25 +34,15 @@ View [Documentation](https://www.material-react-table.com/)
 
 ## About Novastera
 
-**Material React Table V4** is maintained by **Novastera** as part of our commitment to the open-source community. This fork was established to ensure that one of the React table libraries remains compatible with the latest versions of Material UI and receives the active maintenance it deserves.
+**Material React Table V5** is a from-scratch rewrite maintained by **Novastera**, rebuilt on **TanStack Table v9**, **Material UI v9**, and **React 19** to adopt modern React tooling — including **React Compiler** for automatic memoization — instead of carrying forward v8-era workarounds. This is a deliberate clean break, not an incremental update; see the [Migration Guide](./MIGRATION.md) before upgrading from v4.
 
-We step in where others stall—providing stability, modern dependency support, and a reliable path forward for production applications.
-
-Learn more: [https://novastera.com/resources](https://novastera.com/resources)
-
-## About
-
-### About Novastera
-
-**Material React Table V4** is maintained by **Novastera** as part of our commitment to the open-source community. This fork was established to ensure that one of the React table libraries remains compatible with the latest versions of Material UI and receives the active maintenance it deserves.
-
-We step in where others stall—providing stability, modern dependency support, and a reliable path forward for production applications.
+**Still on React 18 or an older stack?** [Material React Table V4](https://github.com/novastera/material-react-table/tree/v4) remains available for that toolchain.
 
 Learn more: [https://novastera.com/resources](https://novastera.com/resources)
 
 ### _Quickly Create React Data Tables with Material Design_
 
-### **Built with [Material UI <sup>V6</sup>](https://mui.com) and [TanStack Table <sup>V8</sup>](https://tanstack.com/table/v8)**
+### **Built with [Material UI <sup>V9</sup>](https://mui.com) and [TanStack Table <sup>V9</sup>](https://tanstack.com/table/latest)**
 
 <img src="https://material-react-table.com/banner.png" alt="MRT" height="50" />
 
@@ -60,6 +50,8 @@ Learn more: [https://novastera.com/resources](https://novastera.com/resources)
 
 ## Learn More
 
+- See the [Changelog](./CHANGELOG.md) for release notes and breaking changes, especially before upgrading across a major version
+- Upgrading from v4? See the [v4 → v5 Migration Guide](./MIGRATION.md) for a step-by-step walkthrough with code
 - Join the [Discord](https://discord.gg/5wqyRx6fnm) server to join in on the development discussion or ask questions
 - View the [Docs Website](https://www.material-react-table.com/)
 - See all [Props, Options, APIs, Components, and Hooks](https://www.material-react-table.com/docs/api)
@@ -130,18 +122,18 @@ _**Fully Fleshed out [Docs](https://www.material-react-table.com/docs/guides#gui
 
 View the full [Installation Docs](https://www.material-react-table.com/docs/getting-started/install)
 
-1. Ensure that you have React 18 or later installed
+1. Ensure that you have React 19 or later installed
 
-2. Install Peer Dependencies (Material UI V6)
+2. Install Peer Dependencies (Material UI V9)
 
 ```bash
 npm install @mui/material @mui/x-date-pickers @mui/icons-material @emotion/react @emotion/styled
 ```
 
-3. Install material-react-table
+3. Install @novastera-oss/material-react-table
 
 ```bash
-npm install material-react-table
+npm install @novastera-oss/material-react-table
 ```
 
 > _`@tanstack/react-table`, `@tanstack/react-virtual`, and `@tanstack/match-sorter-utils`_ are internal dependencies, so you do NOT need to install them yourself.
@@ -161,7 +153,7 @@ import { useMemo, useState, useEffect } from 'react';
 import {
   MaterialReactTable,
   useMaterialReactTable,
-} from 'material-react-table';
+} from '@novastera-oss/material-react-table';
 
 //data must be stable reference (useState, useMemo, useQuery, defined outside of component, etc.)
 const data = [
@@ -226,12 +218,8 @@ _Open in [Code Sandbox](https://codesandbox.io/s/simple-material-react-table-exa
 
 ## Contributors
 
-<a href="https://github.com/kevinvandy/material-react-table/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=kevinvandy/material-react-table" />
-</a>
+PRs are Welcome! If you're looking to contribute, please check out the issues or start a discussion in this repository.
 
-PRs are Welcome, but please discuss in [GitHub Discussions](https://github.com/KevinVandy/material-react-table/discussions) or the [Discord Server](https://discord.gg/5wqyRx6fnm) first if it is a large change!
-
-Read the [Contributing Guide](https://github.com/KevinVandy/material-react-table/blob/v3/CONTRIBUTING.md) to learn how to run this project locally.
+Read the [Contributing Guide](../../CONTRIBUTING.md) to learn how to run this project locally.
 
 <!-- Use the FORCE, Luke! -->

@@ -7,10 +7,10 @@ import { type Row, filterFns } from '@tanstack/react-table';
 import { type MRT_RowData } from '../types';
 
 const fuzzy = <TData extends MRT_RowData>(
-  row: Row<TData>,
+  row: Row<any, TData>,
   columnId: string,
   filterValue: number | string,
-  addMeta: (item: RankingInfo) => void,
+  addMeta?: (item: RankingInfo) => void,
 ): boolean => {
   const itemRank = rankItem(
     row.getValue<string | number | null>(columnId),
@@ -19,14 +19,14 @@ const fuzzy = <TData extends MRT_RowData>(
       threshold: rankings.MATCHES,
     },
   );
-  addMeta(itemRank);
+  addMeta?.(itemRank);
   return itemRank.passed;
 };
 
 fuzzy.autoRemove = (val: any) => !val;
 
 const contains = <TData extends MRT_RowData>(
-  row: Row<TData>,
+  row: Row<any, TData>,
   id: string,
   filterValue: number | string,
 ): boolean =>
@@ -40,7 +40,7 @@ const contains = <TData extends MRT_RowData>(
 contains.autoRemove = (val: any) => !val;
 
 const startsWith = <TData extends MRT_RowData>(
-  row: Row<TData>,
+  row: Row<any, TData>,
   id: string,
   filterValue: number | string,
 ): boolean =>
@@ -54,7 +54,7 @@ const startsWith = <TData extends MRT_RowData>(
 startsWith.autoRemove = (val: any) => !val;
 
 const endsWith = <TData extends MRT_RowData>(
-  row: Row<TData>,
+  row: Row<any, TData>,
   id: string,
   filterValue: number | string,
 ): boolean =>
@@ -68,7 +68,7 @@ const endsWith = <TData extends MRT_RowData>(
 endsWith.autoRemove = (val: any) => !val;
 
 const equals = <TData extends MRT_RowData>(
-  row: Row<TData>,
+  row: Row<any, TData>,
   id: string,
   filterValue: number | string,
 ): boolean =>
@@ -78,7 +78,7 @@ const equals = <TData extends MRT_RowData>(
 equals.autoRemove = (val: any) => !val;
 
 const notEquals = <TData extends MRT_RowData>(
-  row: Row<TData>,
+  row: Row<any, TData>,
   id: string,
   filterValue: number | string,
 ): boolean =>
@@ -88,7 +88,7 @@ const notEquals = <TData extends MRT_RowData>(
 notEquals.autoRemove = (val: any) => !val;
 
 const greaterThan = <TData extends MRT_RowData>(
-  row: Row<TData>,
+  row: Row<any, TData>,
   id: string,
   filterValue: number | string,
 ): boolean =>
@@ -102,7 +102,7 @@ const greaterThan = <TData extends MRT_RowData>(
 greaterThan.autoRemove = (val: any) => !val;
 
 const greaterThanOrEqualTo = <TData extends MRT_RowData>(
-  row: Row<TData>,
+  row: Row<any, TData>,
   id: string,
   filterValue: number | string,
 ): boolean => equals(row, id, filterValue) || greaterThan(row, id, filterValue);
@@ -110,7 +110,7 @@ const greaterThanOrEqualTo = <TData extends MRT_RowData>(
 greaterThanOrEqualTo.autoRemove = (val: any) => !val;
 
 const lessThan = <TData extends MRT_RowData>(
-  row: Row<TData>,
+  row: Row<any, TData>,
   id: string,
   filterValue: number | string,
 ): boolean =>
@@ -124,7 +124,7 @@ const lessThan = <TData extends MRT_RowData>(
 lessThan.autoRemove = (val: any) => !val;
 
 const lessThanOrEqualTo = <TData extends MRT_RowData>(
-  row: Row<TData>,
+  row: Row<any, TData>,
   id: string,
   filterValue: number | string,
 ): boolean => equals(row, id, filterValue) || lessThan(row, id, filterValue);
@@ -132,7 +132,7 @@ const lessThanOrEqualTo = <TData extends MRT_RowData>(
 lessThanOrEqualTo.autoRemove = (val: any) => !val;
 
 const between = <TData extends MRT_RowData>(
-  row: Row<TData>,
+  row: Row<any, TData>,
   id: string,
   filterValues: [number | string, number | string],
 ): boolean =>
@@ -147,7 +147,7 @@ const between = <TData extends MRT_RowData>(
 between.autoRemove = (val: any) => !val;
 
 const betweenInclusive = <TData extends MRT_RowData>(
-  row: Row<TData>,
+  row: Row<any, TData>,
   id: string,
   filterValues: [number | string, number | string],
 ): boolean =>
@@ -162,7 +162,7 @@ const betweenInclusive = <TData extends MRT_RowData>(
 betweenInclusive.autoRemove = (val: any) => !val;
 
 const empty = <TData extends MRT_RowData>(
-  row: Row<TData>,
+  row: Row<any, TData>,
   id: string,
   _filterValue: number | string,
 ): boolean => !row.getValue<number | string | null>(id)?.toString().trim();
@@ -170,7 +170,7 @@ const empty = <TData extends MRT_RowData>(
 empty.autoRemove = (val: any) => !val;
 
 const notEmpty = <TData extends MRT_RowData>(
-  row: Row<TData>,
+  row: Row<any, TData>,
   id: string,
   _filterValue: number | string,
 ): boolean => !!row.getValue<number | string | null>(id)?.toString().trim();

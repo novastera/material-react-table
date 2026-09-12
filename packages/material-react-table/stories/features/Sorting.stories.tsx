@@ -100,7 +100,7 @@ export const SortRanking = () => (
       {
         accessorKey: 'firstName',
         header: 'First Name',
-        sortingFn: 'fuzzy',
+        sortFn: 'fuzzy',
       },
       {
         accessorKey: 'lastName',

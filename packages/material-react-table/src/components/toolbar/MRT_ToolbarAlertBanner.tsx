@@ -1,4 +1,3 @@
-import { Fragment, useMemo } from 'react';
 import Alert, { type AlertProps } from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 import Box from '@mui/material/Box';
@@ -6,6 +5,9 @@ import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Collapse from '@mui/material/Collapse';
 import Stack from '@mui/material/Stack';
+import { useSelector } from '@tanstack/react-store';
+import { Fragment } from 'react';
+
 import { type MRT_RowData, type MRT_TableInstance } from '../../types';
 import { getMRT_SelectAllHandler } from '../../utils/row.utils';
 import { parseFromValuesOrFunc } from '../../utils/utils';
@@ -23,9 +25,8 @@ export const MRT_ToolbarAlertBanner = <TData extends MRT_RowData>({
   ...rest
 }: MRT_ToolbarAlertBannerProps<TData>) => {
   const {
-    getFilteredSelectedRowModel,
     getCoreRowModel,
-    getState,
+    getFilteredSelectedRowModel,
     options: {
       enableRowSelection,
       enableSelectAll,
@@ -39,7 +40,10 @@ export const MRT_ToolbarAlertBanner = <TData extends MRT_RowData>({
     },
     refs: { tablePaperRef },
   } = table;
-  const { density, grouping, rowSelection, showAlertBanner } = getState();
+  const density = useSelector(table.atoms.density);
+  const grouping = useSelector(table.atoms.grouping);
+  const rowSelection = useSelector(table.atoms.rowSelection);
+  const showAlertBanner = useSelector(table.atoms.showAlertBanner);
 
   const alertProps = {
     ...parseFromValuesOrFunc(muiToolbarAlertBannerProps, {
@@ -55,16 +59,12 @@ export const MRT_ToolbarAlertBanner = <TData extends MRT_RowData>({
   const totalRowCount = rowCount ?? getCoreRowModel().rows.length;
   const filteredRowCount = getFilteredSelectedRowModel().rows.length;
 
-  const selectedRowCount = useMemo(
-    () =>
-      manualPagination
-        ? Object.values(rowSelection).filter(Boolean).length
-        : filteredRowCount,
-    [rowSelection, totalRowCount, manualPagination, filteredRowCount],
-  );
+  const selectedRowCount = manualPagination
+    ? Object.values(rowSelection).filter(Boolean).length
+    : filteredRowCount;
   const selectedAlert =
     selectedRowCount > 0 ? (
-      <Stack sx={{ alignItems: 'center', gap: '16px' }} direction="row">
+      <Stack direction="row" sx={{ alignItems: 'center', gap: '16px' }}>
         {localization.selectedCountOfRowCountRowsSelected
           ?.replace(
             '{selectedCount}',

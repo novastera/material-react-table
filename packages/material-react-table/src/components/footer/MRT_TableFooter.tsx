@@ -1,11 +1,13 @@
 import TableFooter, { type TableFooterProps } from '@mui/material/TableFooter';
-import { MRT_TableFooterRow } from './MRT_TableFooterRow';
+import { useSelector } from '@tanstack/react-store';
+
 import {
   type MRT_ColumnVirtualizer,
   type MRT_RowData,
   type MRT_TableInstance,
 } from '../../types';
-import { parseFromValuesOrFunc } from '../../utils/utils';
+import { mergeRefs, parseFromValuesOrFunc } from '../../utils/utils';
+import { MRT_TableFooterRow } from './MRT_TableFooterRow';
 
 export interface MRT_TableFooterProps<TData extends MRT_RowData>
   extends TableFooterProps {
@@ -19,11 +21,15 @@ export const MRT_TableFooter = <TData extends MRT_RowData>({
   ...rest
 }: MRT_TableFooterProps<TData>) => {
   const {
-    getState,
     options: { enableStickyFooter, layoutMode, muiTableFooterProps },
     refs: { tableFooterRef },
   } = table;
-  const { isFullScreen } = getState();
+  const isFullScreen = useSelector(table.atoms.isFullScreen);
+  //not read directly - table.getFooterGroups() below partitions/orders columns by pin state and
+  //visibility internally, same as MRT_TableHead.tsx's getHeaderGroups() (see that file's comment
+  //and migration-render.md - found live via the same Stage 4 investigation).
+  useSelector(table.atoms.columnPinning);
+  useSelector(table.atoms.columnVisibility);
 
   const tableFooterProps = {
     ...parseFromValuesOrFunc(muiTableFooterProps, {
@@ -54,13 +60,7 @@ export const MRT_TableFooter = <TData extends MRT_RowData>({
   return (
     <TableFooter
       {...tableFooterProps}
-      ref={(ref: HTMLTableSectionElement) => {
-        tableFooterRef.current = ref;
-        if (tableFooterProps?.ref) {
-          // @ts-expect-error
-          tableFooterProps.ref.current = ref;
-        }
-      }}
+      ref={mergeRefs(tableFooterRef, tableFooterProps?.ref)}
       sx={[
         (theme) => ({
           bottom: stickFooter ? 0 : undefined,

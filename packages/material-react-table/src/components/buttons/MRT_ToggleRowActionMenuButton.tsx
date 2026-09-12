@@ -1,7 +1,7 @@
-import { type MouseEvent, useState } from 'react';
 import IconButton, { type IconButtonProps } from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import { MRT_EditActionButtons } from './MRT_EditActionButtons';
+import { type MouseEvent, useState } from 'react';
+
 import {
   type MRT_Cell,
   type MRT_Row,
@@ -11,6 +11,7 @@ import {
 import { getCommonTooltipProps } from '../../utils/style.utils';
 import { parseFromValuesOrFunc } from '../../utils/utils';
 import { MRT_RowActionMenu } from '../menus/MRT_RowActionMenu';
+import { MRT_EditActionButtons } from './MRT_EditActionButtons';
 
 const commonIconButtonStyles = {
   '&:hover': {
@@ -39,7 +40,6 @@ export const MRT_ToggleRowActionMenuButton = <TData extends MRT_RowData>({
   ...rest
 }: MRT_ToggleRowActionMenuButtonProps<TData>) => {
   const {
-    getState,
     options: {
       createDisplayMode,
       editDisplayMode,
@@ -52,7 +52,12 @@ export const MRT_ToggleRowActionMenuButton = <TData extends MRT_RowData>({
     setEditingRow,
   } = table;
 
-  const { creatingRow, editingRow } = getState();
+  //no bare creatingRow/editingRow subscriptions here - this is always rendered inside the
+  //row-actions cell's table.AppCell (see getMRT_RowActionsColumnDef.tsx -> MRT_TableBodyCell.tsx),
+  //whose own selector already includes isCreatingRow/isEditingRow narrowed by cell.row.id (same
+  //reasoning as MRT_RowPinButton.tsx). A bare subscription would re-fire on any row's
+  //create/edit-mode change, not just this row's.
+  const { creatingRow, editingRow } = table.getState();
 
   const isCreating = creatingRow?.id === row.id;
   const isEditing = editingRow?.id === row.id;
@@ -71,7 +76,13 @@ export const MRT_ToggleRowActionMenuButton = <TData extends MRT_RowData>({
 
   const handleStartEditMode = (event: MouseEvent) => {
     event.stopPropagation();
-    setEditingRow({ ...row });
+    //not {...row} - row's methods (getAllCells, getVisibleCells, ...) live on a shared prototype
+    //(Object.create(rowPrototype), see @tanstack/table-core's constructRow), not as the row's own
+    //enumerable properties, so spreading it silently drops every method and leaves a plain data
+    //object. MRT_EditRowModal.tsx/MRT_EditCellTextField.tsx call row.getAllCells() on whatever
+    //setEditingRow receives, so it must stay a real row reference - matches every other
+    //setEditingRow(row) call site (e.g. MRT_EditCellTextField.tsx).
+    setEditingRow(row);
     setAnchorEl(null);
   };
 

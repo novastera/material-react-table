@@ -3,6 +3,8 @@ import TableSortLabel, {
   type TableSortLabelProps,
 } from '@mui/material/TableSortLabel';
 import Tooltip from '@mui/material/Tooltip';
+import { useSelector } from '@tanstack/react-store';
+
 import {
   type MRT_Header,
   type MRT_RowData,
@@ -21,7 +23,6 @@ export const MRT_TableHeadCellSortLabel = <TData extends MRT_RowData>({
   ...rest
 }: MRT_TableHeadCellSortLabelProps<TData>) => {
   const {
-    getState,
     options: {
       icons: { ArrowDownwardIcon, SyncAltIcon },
       localization,
@@ -29,7 +30,9 @@ export const MRT_TableHeadCellSortLabel = <TData extends MRT_RowData>({
   } = table;
   const { column } = header;
   const { columnDef } = column;
-  const { isLoading, showSkeletons, sorting } = getState();
+  const sorting = useSelector(table.atoms.sorting);
+  const isLoading = useSelector(table.atoms.isLoading);
+  const showSkeletons = useSelector(table.atoms.showSkeletons);
 
   const isSorted = !!column.getIsSorted();
 
@@ -58,6 +61,9 @@ export const MRT_TableHeadCellSortLabel = <TData extends MRT_RowData>({
         overlap="circular"
       >
         <TableSortLabel
+          active
+          aria-label={sortTooltip}
+          direction={direction}
           IconComponent={
             !isSorted
               ? (props) => (
@@ -71,9 +77,6 @@ export const MRT_TableHeadCellSortLabel = <TData extends MRT_RowData>({
                 )
               : ArrowDownwardIcon
           }
-          active
-          aria-label={sortTooltip}
-          direction={direction}
           onClick={(e) => {
             e.stopPropagation();
             header.column.getToggleSortingHandler()?.(e);

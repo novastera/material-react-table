@@ -1,8 +1,10 @@
-import { type ChangeEvent, type MouseEvent } from 'react';
 import Checkbox, { type CheckboxProps } from '@mui/material/Checkbox';
 import Radio, { type RadioProps } from '@mui/material/Radio';
-import Tooltip from '@mui/material/Tooltip';
 import { type Theme } from '@mui/material/styles';
+import Tooltip from '@mui/material/Tooltip';
+import { useSelector } from '@tanstack/react-store';
+import { type ChangeEvent, type MouseEvent } from 'react';
+
 import {
   type MRT_Row,
   type MRT_RowData,
@@ -30,7 +32,6 @@ export const MRT_SelectCheckbox = <TData extends MRT_RowData>({
   ...rest
 }: MRT_SelectCheckboxProps<TData>) => {
   const {
-    getState,
     options: {
       enableMultiRowSelection,
       localization,
@@ -39,7 +40,13 @@ export const MRT_SelectCheckbox = <TData extends MRT_RowData>({
       selectAllMode,
     },
   } = table;
-  const { density, isLoading } = getState();
+  const density = useSelector(table.atoms.density);
+  const isLoading = useSelector(table.atoms.isLoading);
+  //not read directly - table.getIsAllRowsSelected()/getIsSomeRowsSelected()/
+  //getIsRowSelected()/row.getIsSomeSelected() below all read this live, but this component
+  //needs its own subscription (this is the actual checkbox - the component most directly
+  //affected if it goes stale) to know when to re-render.
+  useSelector(table.atoms.rowSelection);
 
   const selectAll = !row;
 
@@ -82,6 +89,15 @@ export const MRT_SelectCheckbox = <TData extends MRT_RowData>({
     checked: isChecked,
     disabled:
       isLoading || (row && !row.getCanSelect()) || row?.id === 'mrt-row-create',
+    onChange: (event: ChangeEvent<HTMLInputElement>) => {
+      event.stopPropagation();
+      if (selectAll) {
+        onSelectAllChange(event);
+      } else {
+        onSelectionChange!(event);
+      }
+    },
+    size: (density === 'compact' ? 'small' : 'medium') as 'medium' | 'small',
     slotProps: {
       ...muiSlotProps,
       input: {
@@ -92,11 +108,6 @@ export const MRT_SelectCheckbox = <TData extends MRT_RowData>({
         ...muiSlotProps?.input,
       },
     },
-    onChange: (event: ChangeEvent<HTMLInputElement>) => {
-      event.stopPropagation();
-      selectAll ? onSelectAllChange(event) : onSelectionChange!(event);
-    },
-    size: (density === 'compact' ? 'small' : 'medium') as 'medium' | 'small',
     ...checkboxProps,
     ...rest,
     onClick: (e: MouseEvent<HTMLButtonElement>) => {

@@ -1,6 +1,6 @@
 import { type ReactNode, type JSX } from 'react';
 import {
-  createRow as _createRow,
+  constructRow as _createRow,
   flexRender as _flexRender,
   type Renderable,
 } from '@tanstack/react-table';

@@ -1,18 +1,25 @@
+import MenuItem from '@mui/material/MenuItem';
+import TextField from '@mui/material/TextField';
+import { type TextFieldProps } from '@mui/material/TextField';
+import { useSelector } from '@tanstack/react-store';
 import {
   type ChangeEvent,
   type FocusEvent,
   type KeyboardEvent,
   useState,
 } from 'react';
-import MenuItem from '@mui/material/MenuItem';
-import TextField from '@mui/material/TextField';
-import { type TextFieldProps } from '@mui/material/TextField';
+
 import {
   type MRT_Cell,
   type MRT_RowData,
   type MRT_TableInstance,
 } from '../../types';
-import { getValueAndLabel, parseFromValuesOrFunc, resolveSlotProps } from '../../utils/utils';
+import {
+  getValueAndLabel,
+  parseFromValuesOrFunc,
+  resolveSlotProps,
+  setRefMapEntry,
+} from '../../utils/utils';
 
 export interface MRT_EditCellTextFieldProps<TData extends MRT_RowData>
   extends TextFieldProps<'standard'> {
@@ -26,16 +33,17 @@ export const MRT_EditCellTextField = <TData extends MRT_RowData>({
   ...rest
 }: MRT_EditCellTextFieldProps<TData>) => {
   const {
-    getState,
     options: { createDisplayMode, editDisplayMode, muiEditTextFieldProps },
     refs: { editInputRefs },
     setCreatingRow,
     setEditingCell,
     setEditingRow,
+    setEditingRowValuesCache,
   } = table;
   const { column, row } = cell;
   const { columnDef } = column;
-  const { creatingRow, editingRow } = getState();
+  const creatingRow = useSelector(table.atoms.creatingRow);
+  const editingRow = useSelector(table.atoms.editingRow);
   const { editSelectOptions, editVariant } = columnDef;
 
   const isCreating = creatingRow?.id === row.id;
@@ -75,8 +83,10 @@ export const MRT_EditCellTextField = <TData extends MRT_RowData>({
   const isSelectEdit = editVariant === 'select' || (textFieldProps as any)?.select;
 
   const saveInputValueToRowCache = (newValue: string) => {
-    //@ts-expect-error
-    row._valuesCache[column.id] = newValue;
+    setEditingRowValuesCache((prev) => ({
+      ...prev,
+      [row.id]: { ...prev[row.id], [column.id]: newValue },
+    }));
     if (isCreating) {
       setCreatingRow(row);
     } else if (isEditing) {
@@ -116,9 +126,11 @@ export const MRT_EditCellTextField = <TData extends MRT_RowData>({
       fullWidth
       inputRef={(inputRef) => {
         if (inputRef) {
-          editInputRefs.current![column.id] = isSelectEdit
-            ? inputRef.node
-            : inputRef;
+          setRefMapEntry(
+            editInputRefs,
+            column.id,
+            isSelectEdit ? inputRef.node : inputRef,
+          );
         }
       }}
       label={
@@ -136,8 +148,23 @@ export const MRT_EditCellTextField = <TData extends MRT_RowData>({
       value={value ?? ''}
       variant="standard"
       {...textFieldProps}
+      onBlur={handleBlur}
+      onChange={handleChange}
+      onClick={(e) => {
+        e.stopPropagation();
+        textFieldProps?.onClick?.(e);
+      }}
+      onCompositionEnd={() => setCompletesComposition(true)}
+      onCompositionStart={() => setCompletesComposition(false)}
+      onKeyDown={handleEnterKeyDown}
       slotProps={{
         ...muiSlotProps,
+        htmlInput: (ownerState: any) =>
+          resolveSlotProps(
+            textFieldProps.slotProps?.htmlInput,
+            { autoComplete: 'off' },
+            ownerState,
+          ),
         input: (ownerState: any) =>
           resolveSlotProps(
             muiSlotProps?.input,
@@ -155,22 +182,7 @@ export const MRT_EditCellTextField = <TData extends MRT_RowData>({
             { MenuProps: { disableScrollLock: true } },
             ownerState,
           ),
-        htmlInput: (ownerState: any) =>
-          resolveSlotProps(
-            textFieldProps.slotProps?.htmlInput,
-            { autoComplete: 'off' },
-            ownerState,
-          ),
       }}
-      onBlur={handleBlur}
-      onChange={handleChange}
-      onClick={(e) => {
-        e.stopPropagation();
-        textFieldProps?.onClick?.(e);
-      }}
-      onKeyDown={handleEnterKeyDown}
-      onCompositionStart={() => setCompletesComposition(false)}
-      onCompositionEnd={() => setCompletesComposition(true)}
     >
       {textFieldProps.children ??
         selectOptions?.map((option) => {

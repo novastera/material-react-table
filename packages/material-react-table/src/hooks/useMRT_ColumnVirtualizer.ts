@@ -1,12 +1,12 @@
-import { useCallback, useMemo } from 'react';
-import { type Range, useVirtualizer } from '@tanstack/react-virtual';
+import { defaultRangeExtractor, type Range } from '@tanstack/react-virtual';
+
 import {
   type MRT_ColumnVirtualizer,
   type MRT_RowData,
   type MRT_TableInstance,
 } from '../types';
 import { parseFromValuesOrFunc } from '../utils/utils';
-import { extraIndexRangeExtractor } from '../utils/virtualization.utils';
+import { useMRT_UnmemoizedColumnVirtualizer } from './useMRT_UnmemoizedColumnVirtualizer';
 
 export const useMRT_ColumnVirtualizer = <
   TData extends MRT_RowData,
@@ -16,7 +16,6 @@ export const useMRT_ColumnVirtualizer = <
   table: MRT_TableInstance<TData>,
 ): MRT_ColumnVirtualizer | undefined => {
   const {
-    getState,
     options: {
       columnVirtualizerInstanceRef,
       columnVirtualizerOptions,
@@ -25,9 +24,6 @@ export const useMRT_ColumnVirtualizer = <
     },
     refs: { tableContainerRef },
   } = table;
-  const { columnPinning, columnVisibility, draggingColumn } = getState();
-
-  if (!enableColumnVirtualization) return undefined;
 
   const columnVirtualizerProps = parseFromValuesOrFunc(
     columnVirtualizerOptions,
@@ -38,87 +34,63 @@ export const useMRT_ColumnVirtualizer = <
 
   const visibleColumns = table.getVisibleLeafColumns();
 
-  const [leftPinnedIndexes, rightPinnedIndexes] = useMemo(
-    () =>
-      enableColumnPinning
-        ? [
-            table.getLeftVisibleLeafColumns().map((c) => c.getPinnedIndex()),
-            table
-              .getRightVisibleLeafColumns()
-              .map(
-                (column) => visibleColumns.length - column.getPinnedIndex() - 1,
-              )
-              .sort((a, b) => a - b),
-          ]
-        : [[], []],
-    [columnPinning, columnVisibility, enableColumnPinning],
-  );
+  //plain computed values (not useMemo) - both previous manual dependency arrays missed real
+  //dependencies (table/visibleColumns.length here; visibleColumns below), so neither actually
+  //recomputed when column order changed without columnPinning/columnVisibility also changing - a
+  //real staleness bug, not just a compiler lint nag. visibleColumns itself is already recomputed
+  //fresh every render (table.getVisibleLeafColumns() isn't memoized), so these derived
+  //computations being fresh every render too costs nothing extra in practice.
+  const [leftPinnedIndexes, rightPinnedIndexes] = enableColumnPinning
+    ? [
+        table.getStartVisibleLeafColumns().map((c) => c.getPinnedIndex()),
+        table
+          .getEndVisibleLeafColumns()
+          .map(
+            (column) => visibleColumns.length - column.getPinnedIndex() - 1,
+          )
+          .sort((a: number, b: number) => a - b),
+      ]
+    : [[], []];
 
   const numPinnedLeft = leftPinnedIndexes.length;
   const numPinnedRight = rightPinnedIndexes.length;
 
-  const draggingColumnIndex = useMemo(
-    () =>
-      draggingColumn?.id
-        ? visibleColumns.findIndex((c) => c.id === draggingColumn?.id)
-        : undefined,
-    [draggingColumn?.id],
-  );
-
-  const columnVirtualizer = useVirtualizer({
-    count: visibleColumns.length,
-    estimateSize: (index) => visibleColumns[index].getSize(),
-    getScrollElement: () => tableContainerRef.current,
-    horizontal: true,
-    overscan: 3,
-    rangeExtractor: useCallback(
-      (range: Range) => {
-        const newIndexes = extraIndexRangeExtractor(range, draggingColumnIndex);
+  //useVirtualizer must always be called - Rules of Hooks (React Compiler rejects it outright:
+  //"Hooks must always be called in a consistent order") forbid skipping a hook call based on a
+  //prop like enableColumnVirtualization, since that prop could in principle change across
+  //renders. `enabled` is react-virtual's own native opt-out (it skips
+  //getScrollElement()/observer setup entirely when false, per its source), so it does the same
+  //cost-avoidance the old early return did, without needing to skip the hook call itself.
+  const columnVirtualizer = useMRT_UnmemoizedColumnVirtualizer(
+    {
+      count: visibleColumns.length,
+      enabled: !!enableColumnVirtualization,
+      estimateSize: (index: number) => visibleColumns[index].getSize(),
+      getScrollElement: () => tableContainerRef.current,
+      horizontal: true,
+      overscan: 3,
+      //plain function (not useCallback) - leftPinnedIndexes/rightPinnedIndexes are now freshly
+      //computed every render (see above), so a useCallback keyed on them would never actually
+      //skip recreating this function anyway.
+      rangeExtractor: (range: Range) => {
+        const newIndexes = defaultRangeExtractor(range);
         if (!numPinnedLeft && !numPinnedRight) {
           return newIndexes;
         }
         return [
-          ...new Set([
-            ...leftPinnedIndexes,
-            ...newIndexes,
-            ...rightPinnedIndexes,
-          ]),
+          ...new Set([...leftPinnedIndexes, ...newIndexes, ...rightPinnedIndexes]),
         ];
       },
-      [leftPinnedIndexes, rightPinnedIndexes, draggingColumnIndex],
-    ),
-    ...columnVirtualizerProps,
-  }) as unknown as MRT_ColumnVirtualizer<TScrollElement, TItemElement>;
+      ...columnVirtualizerProps,
+    },
+    { numPinnedLeft, numPinnedRight },
+    //only wired up while virtualization is actually enabled, matching this option's previous
+    //gating (it used to be assigned after an `if (!enableColumnVirtualization) return undefined`
+    //check, which discarded the whole virtualizer instance in the disabled case anyway).
+    enableColumnVirtualization ? columnVirtualizerInstanceRef : undefined,
+  ) as unknown as MRT_ColumnVirtualizer<TScrollElement, TItemElement>;
 
-  const virtualColumns = columnVirtualizer.getVirtualItems();
-  columnVirtualizer.virtualColumns = virtualColumns as any;
-  const numColumns = virtualColumns.length;
-
-  if (numColumns) {
-    const totalSize = columnVirtualizer.getTotalSize();
-
-    const leftNonPinnedStart = virtualColumns[numPinnedLeft]?.start || 0;
-    const leftNonPinnedEnd =
-      virtualColumns[leftPinnedIndexes.length - 1]?.end || 0;
-
-    const rightNonPinnedStart =
-      virtualColumns[numColumns - numPinnedRight]?.start || 0;
-    const rightNonPinnedEnd =
-      virtualColumns[numColumns - numPinnedRight - 1]?.end || 0;
-
-    columnVirtualizer.virtualPaddingLeft =
-      leftNonPinnedStart - leftNonPinnedEnd;
-
-    columnVirtualizer.virtualPaddingRight =
-      totalSize -
-      rightNonPinnedEnd -
-      (numPinnedRight ? totalSize - rightNonPinnedStart : 0);
-  }
-
-  if (columnVirtualizerInstanceRef) {
-    //@ts-expect-error
-    columnVirtualizerInstanceRef.current = columnVirtualizer;
-  }
+  if (!enableColumnVirtualization) return undefined;
 
   return columnVirtualizer as any;
 };

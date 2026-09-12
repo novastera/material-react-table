@@ -3,6 +3,8 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Stack from '@mui/material/Stack';
+import { useSelector } from '@tanstack/react-store';
+
 import {
   type MRT_Row,
   type MRT_RowData,
@@ -24,7 +26,6 @@ export const MRT_EditRowModal = <TData extends MRT_RowData>({
   ...rest
 }: MRT_EditRowModalProps<TData>) => {
   const {
-    getState,
     options: {
       localization,
       muiCreateRowModalProps,
@@ -36,8 +37,10 @@ export const MRT_EditRowModal = <TData extends MRT_RowData>({
     },
     setCreatingRow,
     setEditingRow,
+    setEditingRowValuesCache,
   } = table;
-  const { creatingRow, editingRow } = getState();
+  const creatingRow = useSelector(table.atoms.creatingRow);
+  const editingRow = useSelector(table.atoms.editingRow);
   const row = (creatingRow ?? editingRow) as MRT_Row<TData>;
 
   const dialogProps = {
@@ -70,7 +73,7 @@ export const MRT_EditRowModal = <TData extends MRT_RowData>({
           onEditingRowCancel?.({ row, table });
           setEditingRow(null);
         }
-        row._valuesCache = {} as any; //reset values cache
+        setEditingRowValuesCache((prev) => ({ ...prev, [row.id]: {} })); //reset values cache
         dialogProps.onClose?.(event, reason);
       }}
       open={open}

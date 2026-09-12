@@ -1,4 +1,6 @@
 import Collapse, { type CollapseProps } from '@mui/material/Collapse';
+import { useSelector } from '@tanstack/react-store';
+
 import {
   type MRT_Header,
   type MRT_RowData,
@@ -23,10 +25,9 @@ export const MRT_TableHeadCellFilterContainer = <TData extends MRT_RowData>({
   ...rest
 }: MRT_TableHeadCellFilterContainerProps<TData>) => {
   const {
-    getState,
     options: { columnFilterDisplayMode },
   } = table;
-  const { showColumnFilters } = getState();
+  const showColumnFilters = useSelector(table.atoms.showColumnFilters);
   const { column } = header;
   const { columnDef } = column;
   const { isRangeFilter } = getColumnFilterInfo({ header, table });

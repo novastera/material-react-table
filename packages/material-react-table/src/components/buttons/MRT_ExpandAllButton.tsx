@@ -1,5 +1,7 @@
 import IconButton, { type IconButtonProps } from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
+import { useSelector } from '@tanstack/react-store';
+
 import { type MRT_RowData, type MRT_TableInstance } from '../../types';
 import { getCommonTooltipProps } from '../../utils/style.utils';
 import { parseFromValuesOrFunc } from '../../utils/utils';
@@ -17,7 +19,6 @@ export const MRT_ExpandAllButton = <TData extends MRT_RowData>({
     getCanSomeRowsExpand,
     getIsAllRowsExpanded,
     getIsSomeRowsExpanded,
-    getState,
     options: {
       icons: { KeyboardDoubleArrowDownIcon },
       localization,
@@ -26,7 +27,12 @@ export const MRT_ExpandAllButton = <TData extends MRT_RowData>({
     },
     toggleAllRowsExpanded,
   } = table;
-  const { density, isLoading } = getState();
+  const density = useSelector(table.atoms.density);
+  const isLoading = useSelector(table.atoms.isLoading);
+  //not read directly - getIsAllRowsExpanded()/getCanSomeRowsExpand()/getIsSomeRowsExpanded()
+  //below read this live, but this component needs its own subscription to know when to
+  //re-render, rather than relying on an ancestor's re-render to happen to catch it.
+  useSelector(table.atoms.expanded);
 
   const iconButtonProps = {
     ...parseFromValuesOrFunc(muiExpandAllButtonProps, {

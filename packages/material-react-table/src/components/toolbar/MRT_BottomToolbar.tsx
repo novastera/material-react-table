@@ -1,13 +1,15 @@
 import Box, { type BoxProps } from '@mui/material/Box';
 import { alpha } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
+import { useSelector } from '@tanstack/react-store';
+
+import { type MRT_RowData, type MRT_TableInstance } from '../../types';
+import { getCommonToolbarStyles } from '../../utils/style.utils';
+import { mergeRefs, parseFromValuesOrFunc } from '../../utils/utils';
 import { MRT_LinearProgressBar } from './MRT_LinearProgressBar';
 import { MRT_TablePagination } from './MRT_TablePagination';
 import { MRT_ToolbarAlertBanner } from './MRT_ToolbarAlertBanner';
 import { MRT_ToolbarDropZone } from './MRT_ToolbarDropZone';
-import { type MRT_RowData, type MRT_TableInstance } from '../../types';
-import { getCommonToolbarStyles } from '../../utils/style.utils';
-import { parseFromValuesOrFunc } from '../../utils/utils';
 
 export interface MRT_BottomToolbarProps<TData extends MRT_RowData>
   extends BoxProps {
@@ -19,7 +21,6 @@ export const MRT_BottomToolbar = <TData extends MRT_RowData>({
   ...rest
 }: MRT_BottomToolbarProps<TData>) => {
   const {
-    getState,
     options: {
       enablePagination,
       muiBottomToolbarProps,
@@ -30,7 +31,7 @@ export const MRT_BottomToolbar = <TData extends MRT_RowData>({
     },
     refs: { bottomToolbarRef },
   } = table;
-  const { isFullScreen } = getState();
+  const isFullScreen = useSelector(table.atoms.isFullScreen);
 
   const isMobile = useMediaQuery('(max-width:720px)');
 
@@ -45,13 +46,7 @@ export const MRT_BottomToolbar = <TData extends MRT_RowData>({
     <Box
       {...toolbarProps}
       ref={(node: HTMLDivElement) => {
-        if (node) {
-          bottomToolbarRef.current = node;
-          if (toolbarProps?.ref) {
-            // @ts-expect-error
-            toolbarProps.ref.current = node;
-          }
-        }
+        if (node) mergeRefs(bottomToolbarRef, toolbarProps?.ref)(node);
       }}
       sx={[
         (theme) => ({

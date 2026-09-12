@@ -1,11 +1,13 @@
-import { useState } from 'react';
-import {
-  type MRT_ColumnDef,
-  type MRT_Row,
-  MaterialReactTable,
-} from '../../src';
 import { faker } from '@faker-js/faker';
 import { type Meta } from '@storybook/react';
+import { useState } from 'react';
+
+import {
+  MaterialReactTable,
+  type MRT_ColumnDef,
+  type MRT_Row,
+  reorderRows,
+} from '../../src';
 
 const meta: Meta = {
   title: 'Features/Row Ordering Examples',
@@ -23,6 +25,13 @@ type Person = {
   state: string;
 };
 
+//'#' is bound to each row's own static `num` field (set once in initData below, never touched by
+//reorderRows), not to the row's live display position - so it deliberately does NOT renumber
+//itself as rows are dragged/dropped. Mid-drag this looks like the number "isn't following" the
+//row (it stays showing its original value while the row visually moves elsewhere) - that's
+//expected for this demo's data shape, not a bug in row dragging itself. A consumer wanting an
+//always-sequential display column would bind it to `row.index` (updates live) instead of a plain
+//data field like this.
 const columns: MRT_ColumnDef<Person>[] = [
   {
     accessorKey: 'num',
@@ -77,14 +86,7 @@ export const RowOrderingEnabled = () => {
       muiRowDragHandleProps={({ table }) => ({
         onDragEnd: () => {
           const { draggingRow, hoveredRow } = table.getState();
-          if (hoveredRow && draggingRow) {
-            data.splice(
-              (hoveredRow as MRT_Row<Person>).index,
-              0,
-              data.splice(draggingRow.index, 1)[0],
-            );
-            setData([...data]);
-          }
+          setData((prev) => reorderRows(prev, draggingRow, hoveredRow));
         },
       })}
     />
@@ -94,7 +96,7 @@ export const RowOrderingEnabled = () => {
 export const RowOrderingWithSelect = () => {
   const [data, setData] = useState(() => initData);
   const [draggingRow, setDraggingRow] = useState<MRT_Row<Person> | null>(null);
-  const [hoveredRow, setHoveredRow] = useState<Partial<MRT_Row<Person>> | null>(
+  const [hoveredRow, setHoveredRow] = useState<null | Partial<MRT_Row<Person>>>(
     null,
   );
 
@@ -109,14 +111,7 @@ export const RowOrderingWithSelect = () => {
       getRowId={(row) => row.email}
       muiRowDragHandleProps={{
         onDragEnd: () => {
-          if (hoveredRow && draggingRow) {
-            data.splice(
-              hoveredRow?.index ?? 0,
-              0,
-              data.splice(draggingRow.index, 1)[0],
-            );
-            setData([...data]);
-          }
+          setData((prev) => reorderRows(prev, draggingRow, hoveredRow));
         },
       }}
       onDraggingRowChange={setDraggingRow}
@@ -132,7 +127,7 @@ export const RowOrderingWithSelect = () => {
 export const RowOrderingWithPinning = () => {
   const [data, setData] = useState(() => initData);
   const [draggingRow, setDraggingRow] = useState<MRT_Row<Person> | null>(null);
-  const [hoveredRow, setHoveredRow] = useState<Partial<MRT_Row<Person>> | null>(
+  const [hoveredRow, setHoveredRow] = useState<null | Partial<MRT_Row<Person>>>(
     null,
   );
 
@@ -146,14 +141,7 @@ export const RowOrderingWithPinning = () => {
       enableSorting={false}
       muiRowDragHandleProps={{
         onDragEnd: () => {
-          if (hoveredRow && draggingRow) {
-            data.splice(
-              hoveredRow?.index ?? 0,
-              0,
-              data.splice(draggingRow.index, 1)[0],
-            );
-            setData([...data]);
-          }
+          setData((prev) => reorderRows(prev, draggingRow, hoveredRow));
         },
       }}
       onDraggingRowChange={setDraggingRow}
@@ -169,7 +157,7 @@ export const RowOrderingWithPinning = () => {
 export const RowAndColumnOrdering = () => {
   const [data, setData] = useState(() => initData);
   const [draggingRow, setDraggingRow] = useState<MRT_Row<Person> | null>(null);
-  const [hoveredRow, setHoveredRow] = useState<Partial<MRT_Row<Person>> | null>(
+  const [hoveredRow, setHoveredRow] = useState<null | Partial<MRT_Row<Person>>>(
     null,
   );
 
@@ -184,14 +172,7 @@ export const RowAndColumnOrdering = () => {
       enableSorting={false}
       muiRowDragHandleProps={{
         onDragEnd: () => {
-          if (hoveredRow && draggingRow) {
-            data.splice(
-              hoveredRow.index ?? 0,
-              0,
-              data.splice(draggingRow.index, 1)[0],
-            );
-            setData([...data]);
-          }
+          setData((prev) => reorderRows(prev, draggingRow, hoveredRow));
         },
       }}
       onDraggingRowChange={setDraggingRow}
@@ -219,14 +200,7 @@ export const RowOrderingWithRowVirtualization = () => {
       muiRowDragHandleProps={({ table }) => ({
         onDragEnd: () => {
           const { draggingRow, hoveredRow } = table.getState();
-          if (hoveredRow && draggingRow) {
-            data.splice(
-              (hoveredRow as MRT_Row<Person>).index,
-              0,
-              data.splice(draggingRow.index, 1)[0],
-            );
-            setData([...data]);
-          }
+          setData((prev) => reorderRows(prev, draggingRow, hoveredRow));
         },
       })}
     />
@@ -267,14 +241,7 @@ export const RowOrderingWithColumnVirtualization = () => {
       muiRowDragHandleProps={({ table }) => ({
         onDragEnd: () => {
           const { draggingRow, hoveredRow } = table.getState();
-          if (hoveredRow && draggingRow) {
-            data.splice(
-              (hoveredRow as MRT_Row<any>).index,
-              0,
-              data.splice(draggingRow.index, 1)[0],
-            );
-            setData([...data]);
-          }
+          setData((prev) => reorderRows(prev, draggingRow, hoveredRow));
         },
       })}
     />

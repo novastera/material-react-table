@@ -118,13 +118,15 @@ export const cellKeyboardShortcuts = <TData extends MRT_RowData = MRT_RowData>({
       table.toggleAllRowsExpanded();
     } else if (cell?.column.id === 'mrt-row-pin') {
       event.preventDefault();
-      cell.row.getIsPinned()
-        ? cell.row.pin(false)
-        : cell.row.pin(
-            table.options.rowPinningDisplayMode?.includes('bottom')
-              ? 'bottom'
-              : 'top',
-          );
+      if (cell.row.getIsPinned()) {
+        cell.row.pin(false);
+      } else {
+        cell.row.pin(
+          table.options.rowPinningDisplayMode?.includes('bottom')
+            ? 'bottom'
+            : 'top',
+        );
+      }
     } else if (header && isWinCtrlMacMeta(event)) {
       const actionsButton = currentCell.querySelector(
         `button[aria-label="${table.options.localization.columnActions}"]`,

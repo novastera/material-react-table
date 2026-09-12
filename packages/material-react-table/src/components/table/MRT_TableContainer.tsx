@@ -1,13 +1,15 @@
-import { useEffect, useLayoutEffect, useState } from 'react';
 import TableContainer, {
   type TableContainerProps,
 } from '@mui/material/TableContainer';
-import { MRT_Table } from './MRT_Table';
-import { MRT_TableLoadingOverlay } from './MRT_TableLoadingOverlay';
+import { useSelector } from '@tanstack/react-store';
+import { useEffect, useLayoutEffect, useState } from 'react';
+
 import { type MRT_RowData, type MRT_TableInstance } from '../../types';
-import { parseFromValuesOrFunc } from '../../utils/utils';
+import { mergeRefs, parseFromValuesOrFunc } from '../../utils/utils';
 import { MRT_CellActionMenu } from '../menus/MRT_CellActionMenu';
 import { MRT_EditRowModal } from '../modals/MRT_EditRowModal';
+import { MRT_Table } from './MRT_Table';
+import { MRT_TableLoadingOverlay } from './MRT_TableLoadingOverlay';
 
 const useIsomorphicLayoutEffect =
   typeof window !== 'undefined' ? useLayoutEffect : useEffect;
@@ -22,7 +24,6 @@ export const MRT_TableContainer = <TData extends MRT_RowData>({
   ...rest
 }: MRT_TableContainerProps<TData>) => {
   const {
-    getState,
     options: {
       createDisplayMode,
       editDisplayMode,
@@ -32,14 +33,12 @@ export const MRT_TableContainer = <TData extends MRT_RowData>({
     },
     refs: { bottomToolbarRef, tableContainerRef, topToolbarRef },
   } = table;
-  const {
-    actionCell,
-    creatingRow,
-    editingRow,
-    isFullScreen,
-    isLoading,
-    showLoadingOverlay,
-  } = getState();
+  const actionCell = useSelector(table.atoms.actionCell);
+  const creatingRow = useSelector(table.atoms.creatingRow);
+  const editingRow = useSelector(table.atoms.editingRow);
+  const isFullScreen = useSelector(table.atoms.isFullScreen);
+  const isLoading = useSelector(table.atoms.isLoading);
+  const showLoadingOverlay = useSelector(table.atoms.showLoadingOverlay);
 
   const loading =
     showLoadingOverlay !== false && (isLoading || showLoadingOverlay);
@@ -76,13 +75,7 @@ export const MRT_TableContainer = <TData extends MRT_RowData>({
       aria-describedby={loading ? 'mrt-progress' : undefined}
       {...tableContainerProps}
       ref={(node: HTMLDivElement) => {
-        if (node) {
-          tableContainerRef.current = node;
-          if (tableContainerProps?.ref) {
-            //@ts-expect-error
-            tableContainerProps.ref.current = node;
-          }
-        }
+        if (node) mergeRefs(tableContainerRef, tableContainerProps?.ref)(node);
       }}
       style={{
         maxHeight: isFullScreen

@@ -1,5 +1,7 @@
 import Box from '@mui/material/Box';
 import { type IconButtonProps } from '@mui/material/IconButton';
+import { useSelector } from '@tanstack/react-store';
+
 import {
   type MRT_Row,
   type MRT_RowData,
@@ -20,10 +22,11 @@ export const MRT_TableBodyRowPinButton = <TData extends MRT_RowData>({
   ...rest
 }: MRT_TableBodyRowPinButtonProps<TData>) => {
   const {
-    getState,
     options: { enableRowPinning, rowPinningDisplayMode },
   } = table;
-  const { density } = getState();
+  const density = useSelector(table.atoms.density);
+  //no bare rowPinning subscription - see MRT_RowPinButton.tsx's identical comment (this is always
+  //rendered inside MRT_AppRow, whose selector already covers rowPinning narrowed by row.id).
 
   const canPin = parseFromValuesOrFunc(enableRowPinning, row as any);
 

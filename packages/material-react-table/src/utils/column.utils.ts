@@ -1,5 +1,3 @@
-import { useMemo } from 'react';
-import { type Row } from '@tanstack/react-table';
 import {
   type DropdownOption,
   type MRT_Column,
@@ -43,10 +41,9 @@ export const prepareColumns = <TData extends MRT_RowData>({
   tableOptions: MRT_DefinedTableOptions<TData>;
 }): MRT_DefinedColumnDef<TData>[] => {
   const {
-    aggregationFns = {},
     defaultDisplayColumn,
     filterFns = {},
-    sortingFns = {},
+    sortFns = {},
     state: { columnFilterFns = {} } = {},
   } = tableOptions;
   return columnDefs.map((columnDef) => {
@@ -62,18 +59,8 @@ export const prepareColumns = <TData extends MRT_RowData>({
         tableOptions,
       });
     } else if (columnDef.columnDefType === 'data') {
-      //assign aggregationFns if multiple aggregationFns are provided
-      if (Array.isArray(columnDef.aggregationFn)) {
-        const aggFns = columnDef.aggregationFn as string[];
-        columnDef.aggregationFn = (
-          columnId: string,
-          leafRows: Row<TData>[],
-          childRows: Row<TData>[],
-        ) =>
-          aggFns.map((fn) =>
-            aggregationFns[fn]?.(columnId, leafRows, childRows),
-          );
-      }
+      //note: multiple aggregation functions (columnDef.aggregationFn as a string[]) are handled
+      //natively by react-table v9 (produces a keyed object result), no glue code needed here
 
       //assign filterFns
       if (Object.keys(filterFns).includes(columnFilterFns[columnDef.id])) {
@@ -83,10 +70,10 @@ export const prepareColumns = <TData extends MRT_RowData>({
           columnFilterFns[columnDef.id];
       }
 
-      //assign sortingFns
-      if (Object.keys(sortingFns).includes(columnDef.sortingFn as string)) {
+      //assign sortFns
+      if (Object.keys(sortFns).includes(columnDef.sortFn as string)) {
         // @ts-expect-error
-        columnDef.sortingFn = sortingFns[columnDef.sortingFn];
+        columnDef.sortFn = sortFns[columnDef.sortFn];
       }
     } else if (columnDef.columnDefType === 'display') {
       columnDef = {
@@ -115,6 +102,27 @@ export const reorderColumn = <TData extends MRT_RowData>(
   return newColumnOrder;
 };
 
+//Shared by useMRT_DragAndDrop.ts (the table's own header-cell column drag) and
+//MRT_ShowHideColumnsMenu.tsx (its independent, self-contained drag context for reordering columns
+//inside the show/hide-columns popover) - both need the exact same "reorder, then keep pinning
+//arrays consistent with the new order" commit, previously duplicated verbatim in both places.
+export const commitColumnReorder = <TData extends MRT_RowData>(
+  table: MRT_TableInstance<TData>,
+  draggedColumn: MRT_Column<TData>,
+  targetColumn: MRT_Column<TData>,
+) => {
+  const reorderedColumns = reorderColumn(
+    draggedColumn,
+    targetColumn,
+    table.atoms.columnOrder.get(),
+  );
+  table.setColumnOrder(reorderedColumns);
+  table.setColumnPinning(({ end = [], start = [] }) => ({
+    end: reorderedColumns.filter((header) => end.includes(header)),
+    start: reorderedColumns.filter((header) => start.includes(header)),
+  }));
+};
+
 export const getDefaultColumnFilterFn = <TData extends MRT_RowData>(
   columnDef: MRT_ColumnDef<TData>,
 ): MRT_FilterOption => {
@@ -134,7 +142,7 @@ export const getColumnFilterInfo = <TData extends MRT_RowData>({
   table: MRT_TableInstance<TData>;
 }) => {
   const {
-    options: { columnFilterModeOptions },
+    options: { columnFilterModeOptions, enableFacetedValues },
   } = table;
   const { column } = header;
   const { columnDef } = column;
@@ -159,7 +167,12 @@ export const getColumnFilterInfo = <TData extends MRT_RowData>({
   const allowedColumnFilterOptions =
     columnDef?.columnFilterModeOptions ?? columnFilterModeOptions;
 
-  const facetedUniqueValues = column.getFacetedUniqueValues();
+  //v9 always registers the faceted row models (features can't be conditionally registered
+  //per-instance); gate the actual computation here so enableFacetedValues: false still means
+  //what it says instead of computing unique values for every column regardless
+  const facetedUniqueValues = enableFacetedValues
+    ? column.getFacetedUniqueValues()
+    : new Map<any, number>();
 
   return {
     allowedColumnFilterOptions,
@@ -190,20 +203,17 @@ export const useDropdownOptions = <TData extends MRT_RowData>({
     isSelectFilter,
   } = getColumnFilterInfo({ header, table });
 
-  return useMemo<DropdownOption[] | undefined>(
-    () =>
-      columnDef.filterSelectOptions ??
-      ((isSelectFilter || isMultiSelectFilter || isAutocompleteFilter) &&
-      facetedUniqueValues
-        ? Array.from(facetedUniqueValues.keys())
-            .filter((value) => value !== null && value !== undefined)
-            .sort((a, b) => a.localeCompare(b))
-        : undefined),
-    [
-      columnDef.filterSelectOptions,
-      facetedUniqueValues,
-      isMultiSelectFilter,
-      isSelectFilter,
-    ],
+  //plain computed value (not useMemo) - the previous manual dependency array didn't list
+  //isAutocompleteFilter despite the callback reading it, which made React Compiler refuse to
+  //compile this hook at all (category PreserveManualMemo) rather than risk a stale value.
+  //Letting the compiler infer the real dependencies itself is both correct and simpler.
+  return (
+    columnDef.filterSelectOptions ??
+    ((isSelectFilter || isMultiSelectFilter || isAutocompleteFilter) &&
+    facetedUniqueValues
+      ? Array.from(facetedUniqueValues.keys())
+          .filter((value) => value !== null && value !== undefined)
+          .sort((a, b) => String(a).localeCompare(String(b)))
+      : undefined)
   );
 };

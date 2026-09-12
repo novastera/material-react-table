@@ -1,14 +1,16 @@
 import Box from '@mui/material/Box';
 import useMediaQuery from '@mui/material/useMediaQuery';
+import { useSelector } from '@tanstack/react-store';
+
+import { type MRT_RowData, type MRT_TableInstance } from '../../types';
+import { getCommonToolbarStyles } from '../../utils/style.utils';
+import { mergeRefs, parseFromValuesOrFunc } from '../../utils/utils';
+import { MRT_GlobalFilterTextField } from '../inputs/MRT_GlobalFilterTextField';
 import { MRT_LinearProgressBar } from './MRT_LinearProgressBar';
 import { MRT_TablePagination } from './MRT_TablePagination';
 import { MRT_ToolbarAlertBanner } from './MRT_ToolbarAlertBanner';
 import { MRT_ToolbarDropZone } from './MRT_ToolbarDropZone';
 import { MRT_ToolbarInternalButtons } from './MRT_ToolbarInternalButtons';
-import { type MRT_RowData, type MRT_TableInstance } from '../../types';
-import { getCommonToolbarStyles } from '../../utils/style.utils';
-import { parseFromValuesOrFunc } from '../../utils/utils';
-import { MRT_GlobalFilterTextField } from '../inputs/MRT_GlobalFilterTextField';
 
 export interface MRT_TopToolbarProps<TData extends MRT_RowData> {
   table: MRT_TableInstance<TData>;
@@ -18,7 +20,6 @@ export const MRT_TopToolbar = <TData extends MRT_RowData>({
   table,
 }: MRT_TopToolbarProps<TData>) => {
   const {
-    getState,
     options: {
       enableGlobalFilter,
       enablePagination,
@@ -33,7 +34,8 @@ export const MRT_TopToolbar = <TData extends MRT_RowData>({
     refs: { topToolbarRef },
   } = table;
 
-  const { isFullScreen, showGlobalFilter } = getState();
+  const isFullScreen = useSelector(table.atoms.isFullScreen);
+  const showGlobalFilter = useSelector(table.atoms.showGlobalFilter);
 
   const isMobile = useMediaQuery('(max-width:720px)');
   const isTablet = useMediaQuery('(max-width:1024px)');
@@ -57,13 +59,7 @@ export const MRT_TopToolbar = <TData extends MRT_RowData>({
   return (
     <Box
       {...toolbarProps}
-      ref={(ref: HTMLDivElement) => {
-        topToolbarRef.current = ref;
-        if (toolbarProps?.ref) {
-          // @ts-expect-error
-          toolbarProps.ref.current = ref;
-        }
-      }}
+      ref={mergeRefs(topToolbarRef, toolbarProps?.ref)}
       sx={[
         (theme) => ({
           ...getCommonToolbarStyles({ table, theme }),

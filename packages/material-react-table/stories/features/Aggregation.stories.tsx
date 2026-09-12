@@ -1,10 +1,6 @@
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import {
-  MRT_AggregationFns,
-  type MRT_ColumnDef,
-  MaterialReactTable,
-} from '../../src';
+import { type MRT_ColumnDef, MaterialReactTable } from '../../src';
 import { faker } from '@faker-js/faker';
 import { type Meta } from '@storybook/react';
 
@@ -211,7 +207,7 @@ export const MultiAggregationPerColumn = () => (
             Min by{' '}
             {table.getColumn(cell.row.groupingColumnId ?? '').columnDef.header}:{' '}
             <Box sx={{ color: 'success.main', fontWeight: 'bold' }}>
-              {cell.getValue<[number, number]>()[0]}
+              {cell.getValue<{ max: number; min: number }>().min}
             </Box>
             <br />
             Max by{' '}
@@ -219,7 +215,7 @@ export const MultiAggregationPerColumn = () => (
               table.getColumn(cell.row.groupingColumnId ?? '').columnDef.header
             }:{' '}
             <Box sx={{ color: 'success.main', fontWeight: 'bold' }}>
-              {cell.getValue<[number, number]>()[1]}
+              {cell.getValue<{ max: number; min: number }>().max}
             </Box>
           </>
         ),
@@ -230,11 +226,9 @@ export const MultiAggregationPerColumn = () => (
           </Stack>
         ),
         accessorKey: 'age',
-        //manually set multiple aggregation functions
-        aggregationFn: (columnId, leafRows: any, childRows: any) => [
-          MRT_AggregationFns.min(columnId, leafRows, childRows),
-          MRT_AggregationFns.max(columnId, leafRows, childRows),
-        ],
+        //multiple aggregation functions - native react-table v9 support, produces a keyed
+        //object result ({ min, max }) instead of v8's positional array
+        aggregationFn: ['min', 'max'],
         header: 'Age',
       },
       {
@@ -253,7 +247,7 @@ export const MultiAggregationPerColumn = () => (
           <>
             Count:{' '}
             <Box sx={{ color: 'success.main', fontWeight: 'bold' }}>
-              {cell.getValue<[number, number]>()?.[0]}
+              {cell.getValue<{ count: number; mean: number }>()?.count}
             </Box>
             <br />
             Average by{' '}
@@ -262,8 +256,8 @@ export const MultiAggregationPerColumn = () => (
             }:{' '}
             <Box sx={{ color: 'success.main', fontWeight: 'bold' }}>
               {cell
-                .getValue<[number, number]>()?.[1]
-                ?.toLocaleString?.('en-US', {
+                .getValue<{ count: number; mean: number }>()
+                ?.mean?.toLocaleString?.('en-US', {
                   currency: 'USD',
                   maximumFractionDigits: 0,
                   minimumFractionDigits: 0,

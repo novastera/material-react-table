@@ -1,12 +1,18 @@
+import {
+  horizontalListSortingStrategy,
+  SortableContext,
+} from '@dnd-kit/sortable';
 import TableHead, { type TableHeadProps } from '@mui/material/TableHead';
-import { MRT_TableHeadRow } from './MRT_TableHeadRow';
+import { useSelector } from '@tanstack/react-store';
+
 import {
   type MRT_ColumnVirtualizer,
   type MRT_RowData,
   type MRT_TableInstance,
 } from '../../types';
-import { parseFromValuesOrFunc } from '../../utils/utils';
+import { mergeRefs, parseFromValuesOrFunc } from '../../utils/utils';
 import { MRT_ToolbarAlertBanner } from '../toolbar/MRT_ToolbarAlertBanner';
+import { MRT_TableHeadRow } from './MRT_TableHeadRow';
 
 export interface MRT_TableHeadProps<TData extends MRT_RowData>
   extends TableHeadProps {
@@ -20,7 +26,6 @@ export const MRT_TableHead = <TData extends MRT_RowData>({
   ...rest
 }: MRT_TableHeadProps<TData>) => {
   const {
-    getState,
     options: {
       enableStickyHeader,
       layoutMode,
@@ -29,7 +34,18 @@ export const MRT_TableHead = <TData extends MRT_RowData>({
     },
     refs: { tableHeadRef },
   } = table;
-  const { isFullScreen, showAlertBanner } = getState();
+  const columnOrder = useSelector(table.atoms.columnOrder);
+  const isFullScreen = useSelector(table.atoms.isFullScreen);
+  const showAlertBanner = useSelector(table.atoms.showAlertBanner);
+  //not read directly - table.getSelectedRowModel() below reads this live.
+  useSelector(table.atoms.rowSelection);
+  //not read directly - table.getHeaderGroups()/getVisibleLeafColumns() below both partition/order
+  //columns by pin state and visibility internally; this component must re-render to pick up the
+  //new header-group shape (found live via Stage 4 of migration-render.md - column pinning stopped
+  //visually moving the header, and hiding a column stopped removing it from the header row, both
+  //because this component never re-called getHeaderGroups()/getVisibleLeafColumns() again).
+  useSelector(table.atoms.columnPinning);
+  useSelector(table.atoms.columnVisibility);
 
   const tableHeadProps = {
     ...parseFromValuesOrFunc(muiTableHeadProps, { table }),
@@ -41,13 +57,7 @@ export const MRT_TableHead = <TData extends MRT_RowData>({
   return (
     <TableHead
       {...tableHeadProps}
-      ref={(ref: HTMLTableSectionElement) => {
-        tableHeadRef.current = ref;
-        if (tableHeadProps?.ref) {
-          // @ts-expect-error
-          tableHeadProps.ref.current = ref;
-        }
-      }}
+      ref={mergeRefs(tableHeadRef, tableHeadProps?.ref)}
       sx={[
         {
           display: layoutMode?.startsWith('grid') ? 'grid' : undefined,
@@ -79,16 +89,21 @@ export const MRT_TableHead = <TData extends MRT_RowData>({
           </th>
         </tr>
       ) : (
-        table
-          .getHeaderGroups()
-          .map((headerGroup) => (
-            <MRT_TableHeadRow
-              columnVirtualizer={columnVirtualizer}
-              headerGroup={headerGroup as any}
-              key={headerGroup.id}
-              table={table}
-            />
-          ))
+        <SortableContext
+          items={columnOrder}
+          strategy={horizontalListSortingStrategy}
+        >
+          {table
+            .getHeaderGroups()
+            .map((headerGroup) => (
+              <MRT_TableHeadRow
+                columnVirtualizer={columnVirtualizer}
+                headerGroup={headerGroup as any}
+                key={headerGroup.id}
+                table={table}
+              />
+            ))}
+        </SortableContext>
       )}
     </TableHead>
   );

@@ -45,6 +45,12 @@ const initData = [...Array(25)].map(() => ({
   state: faker.location.state(),
 }));
 
+//enableRowDragging (not enableRowOrdering) shows the grab handle and lets rows be picked up/
+//visually dragged, but does NOT populate hoveredRow or commit any reorder on drop - that's
+//intentional (a narrower "just show the handle" flag for consumers wiring their own drop logic
+//via the raw dnd-kit event in muiRowDragHandleProps.onDragEnd), not a bug. If you're looking for
+//rows that actually reorder when dropped, see RowOrdering.stories.tsx's RowOrderingEnabled
+//instead - that's the story demonstrating enableRowOrdering + the built-in commit pattern.
 export const RowDraggingEnabled = () => {
   const [data, _setData] = useState(() => initData);
 

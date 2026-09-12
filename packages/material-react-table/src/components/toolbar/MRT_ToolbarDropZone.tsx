@@ -1,9 +1,16 @@
-import { type DragEvent, useEffect } from 'react';
+import { useDroppable } from '@dnd-kit/core';
 import Box, { type BoxProps } from '@mui/material/Box';
 import Fade from '@mui/material/Fade';
-import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
-import { type MRT_RowData, type MRT_TableInstance } from '../../types';
+import Typography from '@mui/material/Typography';
+import { useSelector } from '@tanstack/react-store';
+import { useEffect } from 'react';
+
+import {
+  type MRT_Column,
+  type MRT_RowData,
+  type MRT_TableInstance,
+} from '../../types';
 
 export interface MRT_ToolbarDropZoneProps<TData extends MRT_RowData>
   extends BoxProps {
@@ -15,22 +22,26 @@ export const MRT_ToolbarDropZone = <TData extends MRT_RowData>({
   ...rest
 }: MRT_ToolbarDropZoneProps<TData>) => {
   const {
-    getState,
     options: { enableGrouping, localization },
-    setHoveredColumn,
     setShowToolbarDropZone,
   } = table;
 
-  const { draggingColumn, grouping, hoveredColumn, showToolbarDropZone } =
-    getState();
+  //cast needed because table.atoms.draggingColumn's static type is the minimal `{ id }` shape
+  //(see mrtStateFeature.ts) - at runtime this atom always holds a real MRT_Column<TData>, and
+  //this file is the one place (besides .id checks elsewhere) that needs .columnDef off it.
+  const draggingColumn = useSelector(
+    table.atoms.draggingColumn,
+  ) as MRT_Column<TData> | null;
+  const grouping = useSelector(table.atoms.grouping);
+  const hoveredColumn = useSelector(table.atoms.hoveredColumn);
+  const showToolbarDropZone = useSelector(table.atoms.showToolbarDropZone);
 
-  const handleDragEnter = (_event: DragEvent<HTMLDivElement>) => {
-    setHoveredColumn({ id: 'drop-zone' });
-  };
-
-  const handleDragOver = (e: DragEvent) => {
-    e.preventDefault();
-  };
+  //not sortable - just a drop target. Hover detection (setHoveredColumn) lives in
+  //useMRT_DragAndDrop.ts's shared onDragOver, keyed off this 'drop-zone' sentinel id.
+  const { setNodeRef } = useDroppable({
+    disabled: !enableGrouping,
+    id: 'drop-zone',
+  });
 
   useEffect(() => {
     if (table.options.state?.showToolbarDropZone !== undefined) {
@@ -47,8 +58,7 @@ export const MRT_ToolbarDropZone = <TData extends MRT_RowData>({
     <Fade in={showToolbarDropZone}>
       <Box
         className="Mui-ToolbarDropZone"
-        onDragEnter={handleDragEnter}
-        onDragOver={handleDragOver}
+        ref={setNodeRef}
         {...rest}
         sx={[
           (theme) => ({

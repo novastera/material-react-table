@@ -20,6 +20,7 @@
     "storybook:dev": "turbo run storybook"
   },
   "devDependencies": {
+    "playwright": "^1.63.0",
     "prettier": "^3.4.2",
     "rimraf": "^6.1.3",
     "turbo": "2.9.12"

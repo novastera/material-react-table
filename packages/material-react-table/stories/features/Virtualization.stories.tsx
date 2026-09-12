@@ -78,7 +78,7 @@ const longData = [...Array(5000)].map(() => ({
   city: faker.location.city(),
   country: faker.location.country(),
   email: faker.internet.email(),
-  favoriteColor: faker.internet.color(),
+  favoriteColor: faker.color.rgb(),
   favoriteQuote: faker.lorem.sentence(),
   firstName: faker.person.firstName(),
   lastName: faker.person.lastName(),
@@ -179,34 +179,6 @@ export const EnableRowVirtualizationWithDetailPanel = () => (
     enableRowNumbers
     enableRowVirtualization
     renderDetailPanel={() => <div>Detail Panel</div>}
-  />
-);
-
-export const EnableRowVirtualizationWithMemoizedCells = () => (
-  <MaterialReactTable
-    columns={longColumns}
-    data={longData}
-    enableBottomToolbar={false}
-    enableDensityToggle={false}
-    enablePagination={false}
-    enableRowNumbers
-    enableRowVirtualization
-    initialState={{ density: 'compact' }}
-    memoMode="cells"
-  />
-);
-
-export const EnableRowVirtualizationWithMemoizedRows = () => (
-  <MaterialReactTable
-    columns={longColumns}
-    data={longData}
-    enableBottomToolbar={false}
-    enableDensityToggle={false}
-    enablePagination={false}
-    enableRowNumbers
-    enableRowVirtualization
-    initialState={{ density: 'compact' }}
-    memoMode="rows"
   />
 );
 

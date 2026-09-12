@@ -1,19 +1,14 @@
-import {
-  type ChangeEvent,
-  type MouseEvent,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
 import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import TextField, { type TextFieldProps } from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import { debounce } from '@mui/material/utils';
+import { useSelector } from '@tanstack/react-store';
+import { type ChangeEvent, type MouseEvent, useRef, useState } from 'react';
+
 import { type MRT_RowData, type MRT_TableInstance } from '../../types';
-import { parseFromValuesOrFunc, resolveSlotProps } from '../../utils/utils';
+import { mergeRefs, parseFromValuesOrFunc, resolveSlotProps } from '../../utils/utils';
 import { MRT_FilterOptionMenu } from '../menus/MRT_FilterOptionMenu';
 
 export interface MRT_GlobalFilterTextFieldProps<TData extends MRT_RowData>
@@ -26,7 +21,6 @@ export const MRT_GlobalFilterTextField = <TData extends MRT_RowData>({
   ...rest
 }: MRT_GlobalFilterTextFieldProps<TData>) => {
   const {
-    getState,
     options: {
       enableGlobalFilterModes,
       icons: { CloseIcon, SearchIcon },
@@ -37,7 +31,8 @@ export const MRT_GlobalFilterTextField = <TData extends MRT_RowData>({
     refs: { searchInputRef },
     setGlobalFilter,
   } = table;
-  const { globalFilter, showGlobalFilter } = getState();
+  const globalFilter = useSelector(table.atoms.globalFilter);
+  const showGlobalFilter = useSelector(table.atoms.showGlobalFilter);
 
   const {
     InputProps: muiInputProps,
@@ -51,19 +46,25 @@ export const MRT_GlobalFilterTextField = <TData extends MRT_RowData>({
     ...rest,
   } as any;
 
-  const isMounted = useRef(false);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [searchValue, setSearchValue] = useState(globalFilter ?? '');
 
-  const handleChangeDebounced = useCallback(
-    debounce(
+  //lazily create the debounced function once and hold it in a ref (not useMemo) - debounce()
+  //returns a stateful closure (its own pending-timeout bookkeeping), so its identity must
+  //survive across renders the same way a ref's does; see
+  //https://react.dev/reference/react/useRef#avoiding-recreating-the-ref-contents
+  const handleChangeDebouncedRef = useRef<
+    ((event: ChangeEvent<HTMLInputElement>) => void) | null
+  >(null);
+  if (handleChangeDebouncedRef.current === null) {
+    handleChangeDebouncedRef.current = debounce(
       (event: ChangeEvent<HTMLInputElement>) => {
         setGlobalFilter(event.target.value ?? undefined);
       },
       manualFiltering ? 500 : 250,
-    ),
-    [],
-  );
+    );
+  }
+  const handleChangeDebounced = handleChangeDebouncedRef.current;
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     setSearchValue(event.target.value);
@@ -80,12 +81,13 @@ export const MRT_GlobalFilterTextField = <TData extends MRT_RowData>({
     setGlobalFilter(undefined);
   };
 
-  useEffect(() => {
-    if (isMounted.current) {
-      setSearchValue(globalFilter ?? '');
-    }
-    isMounted.current = true;
-  }, [globalFilter]);
+  //adjust searchValue when the external globalFilter changes, skipping the first render - see
+  //https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [prevGlobalFilter, setPrevGlobalFilter] = useState(globalFilter);
+  if (prevGlobalFilter !== globalFilter) {
+    setPrevGlobalFilter(globalFilter);
+    setSearchValue(globalFilter ?? '');
+  }
 
   return (
     <Collapse in={showGlobalFilter} orientation="horizontal">
@@ -95,6 +97,8 @@ export const MRT_GlobalFilterTextField = <TData extends MRT_RowData>({
         placeholder={localization.search}
         variant="standard"
         {...textFieldProps}
+        inputRef={mergeRefs(searchInputRef, textFieldProps?.inputRef)}
+        onChange={handleChange}
         slotProps={{
           ...muiSlotProps,
           htmlInput: (ownerState: any) =>
@@ -145,13 +149,6 @@ export const MRT_GlobalFilterTextField = <TData extends MRT_RowData>({
               ownerState,
             ),
         }}
-        inputRef={(inputRef) => {
-          searchInputRef.current = inputRef;
-          if ((textFieldProps as any)?.inputRef) {
-            (textFieldProps as any).inputRef = inputRef;
-          }
-        }}
-        onChange={handleChange}
         value={searchValue ?? ''}
       />
       <MRT_FilterOptionMenu
