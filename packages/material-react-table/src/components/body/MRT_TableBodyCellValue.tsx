@@ -1,10 +1,12 @@
 import { type ReactNode, type RefObject } from 'react';
 import Box from '@mui/material/Box';
+import Skeleton from '@mui/material/Skeleton';
 import {
   type MRT_Cell,
   type MRT_RowData,
   type MRT_TableInstance,
 } from '../../types';
+import { parseFromValuesOrFunc } from '../../utils/utils';
 import highlightWords from 'highlight-words';
 
 const allowedTypes = ['string', 'number'];
@@ -29,12 +31,27 @@ export const MRT_TableBodyCellValue = <TData extends MRT_RowData>({
     options: {
       enableFilterMatchHighlighting,
       mrtTheme: { matchHighlightColor },
+      muiSkeletonProps,
     },
   } = table;
   const { column, row } = cell;
   const { columnDef } = column;
-  const { globalFilter, globalFilterFn } = getState();
+  const { globalFilter, globalFilterFn, isLoading, showSkeletons } = getState();
   const filterValue = column.getFilterValue();
+
+  // MRT_TableBodyCell already renders a skeleton while loading; this standalone export needs
+  // the same behavior so it's safe to call directly, which is exactly how a manually-built
+  // <TableBody> uses it — without this, evaluating accessorFn/Cell during loading would render
+  // whatever the column definition produces for not-yet-loaded data instead of a skeleton.
+  if (showSkeletons !== false && (isLoading || showSkeletons)) {
+    const skeletonProps = parseFromValuesOrFunc(muiSkeletonProps, {
+      cell,
+      column,
+      row,
+      table,
+    });
+    return <Skeleton animation="wave" height={20} width="70%" {...skeletonProps} />;
+  }
 
   let renderedCellValue =
     cell.getIsAggregated() && columnDef.AggregatedCell
