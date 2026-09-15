@@ -6,7 +6,7 @@
 
 <img src="https://material-react-table.com/banner.png" alt="MRT" height="50" />
 
-This is a fork of [Material React Table](https://www.material-react-table.com/) maintained by **Novastera**. V5 is a from-scratch rewrite, not an incremental update — it moves the table engine onto TanStack Table v9, rebuilds on Material UI v9 and React 19, and adopts React Compiler for automatic memoization, so the library stops carrying forward v8-era workarounds and starts using what its own dependencies offer natively.
+This is a fork of [Material React Table](https://www.material-react-table.com/) maintained by **Novastera**. V5 is a from-scratch rewrite, not an incremental update — it moves the table engine onto TanStack Table v9 and rebuilds on Material UI v9 and React 19, so the library stops carrying forward v8-era workarounds and starts using what its own dependencies offer natively.
 
 **Still on React 18 or an older stack?** The [v4 branch](https://github.com/novastera/material-react-table/tree/v4) remains available — V5 is not a drop-in upgrade, so stay on v4 until you're ready to move (see the [Migration Guide](./packages/material-react-table/MIGRATION.md)).
 

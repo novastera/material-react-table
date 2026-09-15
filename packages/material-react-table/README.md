@@ -34,7 +34,7 @@ View [Documentation](https://www.material-react-table.com/)
 
 ## About Novastera
 
-**Material React Table V5** is a from-scratch rewrite maintained by **Novastera**, rebuilt on **TanStack Table v9**, **Material UI v9**, and **React 19** to adopt modern React tooling — including **React Compiler** for automatic memoization — instead of carrying forward v8-era workarounds. This is a deliberate clean break, not an incremental update; see the [Migration Guide](./MIGRATION.md) before upgrading from v4.
+**Material React Table V5** is a from-scratch rewrite maintained by **Novastera**, rebuilt on **TanStack Table v9**, **Material UI v9**, and **React 19** instead of carrying forward v8-era workarounds. This is a deliberate clean break, not an incremental update; see the [Migration Guide](./MIGRATION.md) before upgrading from v4.
 
 **Still on React 18 or an older stack?** [Material React Table V4](https://github.com/novastera/material-react-table/tree/v4) remains available for that toolchain.
 

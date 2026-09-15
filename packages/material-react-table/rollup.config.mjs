@@ -46,7 +46,14 @@ export default [
   },
   {
     //The actual runtime JS bundle, transformed with Babel (not the TypeScript plugin) so
-    //React Compiler sees real JSX/hook source instead of already-compiled output.
+    //JSX/TS survive as real source through this pass. Do NOT run babel-plugin-react-compiler
+    //here: this is a library, and TanStack Table's row/cell/table objects are stable identities
+    //whose "current" values are read through methods (row.getIsSelected(), table.getState(),
+    //…). The compiler memoizes those calls against the stable object, so a discarded
+    //useSelector(table.atoms.rowSelection) no longer invalidates `checked` / `data-selected`.
+    //Storybook (uncompiled source) was fine; every consumer of dist was not. Re-render scoping
+    //is already handled by table.Subscribe / AppCell / AppRow. Consumers who want the compiler
+    //can run it on their own app; it will not compile this package's node_modules dist.
     external: peerDepsExternal,
     input: './src/index.ts',
     output: [
@@ -68,7 +75,6 @@ export default [
         babelHelpers: 'bundled',
         extensions: ['.ts', '.tsx'],
         presets: ['@babel/preset-typescript', ['@babel/preset-react', { runtime: 'automatic' }]],
-        plugins: [['babel-plugin-react-compiler', { target: '19' }]],
       }),
     ],
   },

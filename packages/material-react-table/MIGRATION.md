@@ -111,7 +111,7 @@ Still works exactly as documented (`true` computes faceted unique values / min-m
 
 ## 8. `memoMode` removed
 
-React Compiler now handles this automatically, at build time, for every component in the library.
+Row/cell/header re-render scoping is now handled internally by `table.Subscribe` / `AppCell` / `AppRow`. The published bundle is not transformed by React Compiler — that tool belongs in consuming apps, not in a library that reads TanStack Table state through methods on stable `row`/`cell`/`table` objects.
 
 ```diff
   useMaterialReactTable({
@@ -227,6 +227,42 @@ This is the biggest structural change, but it **only affects you if you directly
 ```
 
 **None of this touches**: `columnDef.Cell`/`Header`/`Footer`/`AggregatedCell`/`GroupedCell`/etc. (still plain functions MRT calls for you, receiving `{cell, column, row, table}` exactly as before), or `header.getContext()`/`cell.getContext()`/`row.getContext()`-based headless rendering with `flexRender` (still works as documented in step 6).
+
+## 11. If you hand-build a `<TableBody>`: three re-render footguns to avoid
+
+Not itself a v4→v5 breaking change — this applies to the manual-`<TableBody>`/`MRT_TableBodyCellValue` pattern from step 10 regardless of version — but it's easy to reach for while migrating, all three mistakes look reasonable at a glance, and all three have been seen in real code. Confirmed live, not just by reading source: `internal-check/harness.stories.tsx`'s `HeadlessManualSelectionDuringBackgroundLoad` story plus `internal-check/select-during-loading-check.mjs` reproduce the second item below directly.
+
+### Map `isLoading` from your query's *first-load* flag, not its *any-fetch-in-flight* flag
+
+This is the one to check first if row selection or cell content seems to flicker/reset during normal use, not just at first mount. `MRT_TableBodyCellValue` shows a `<Skeleton>` — replacing the cell's entire content, checkbox included — for as long as `table.getState().isLoading` (or `showSkeletons`) is `true`, and `MRT_SelectCheckbox` disables itself under the same condition. That's correct and wanted when there's genuinely no data yet. It's very much not wanted if you wire it to a flag that's *also* `true` during ordinary background activity — most commonly, passing react-query's `isFetching` (`true` on every fetch: the first one, every page of an eager "load more" loop, and every background refetch) instead of its `isLoading` (`true` only before the first successful fetch, back to `false` the moment there's any data to show). Confirmed live: a cell that's already showing real data gets torn down to a skeleton and rebuilt from scratch on *every* background fetch when fed `isFetching` — not once at mount, every single time, for as long as the query keeps refetching.
+
+```diff
+  const { data, isFetching, isLoading } = useInfiniteQuery({ ... });
+
+  const table = useMaterialReactTable({
+    columns,
+    data: allItems,
+-   state: { isLoading: isFetching, pagination, rowSelection },
++   state: { isLoading, pagination, rowSelection },
+  });
+```
+
+If you specifically want a subtle "more rows are loading in the background" indicator without disturbing already-visible rows, don't route it through `isLoading`/`showSkeletons` at all — there's no separate flag for that today; render your own indicator (a toolbar spinner, a banner) driven by `isFetching` directly instead.
+
+### Don't put loading/fetching state in the row `key`
+
+`MRT_TableBodyCellValue` and `MRT_SelectCheckbox` each carry their **own** `useSelector` subscription (`table.atoms.isLoading`/`showSkeletons`, and `table.atoms.rowSelection`, respectively) specifically so they update correctly on their own, without needing help from a parent re-render or a forced remount. Keying each row on something like `` `${row.id}-${isFetching}` `` to work around a suspected stale-skeleton issue is both unnecessary and expensive: changing a `key` doesn't re-render an element, it makes React **unmount and remount it from scratch** — everything inside it, checkbox included, torn down and rebuilt. If your data source fetches several pages back-to-back (an eager "load everything" loop, a background refetch), every such fetch becomes a full-table remount storm. Two symptoms this produces together: a visible slowdown right after the table mounts (while several pages land in quick succession), and checkbox clicks that don't seem to register (the checkbox's component instance — and the click it's mid-handling — can get torn down by a remount landing milliseconds later).
+
+```diff
+- <TableRow key={`${row.id}-${isFetching}`} selected={!!rowSelection[row.id]}>
++ <TableRow key={row.id} selected={!!rowSelection[row.id]}>
+```
+
+If a cell's value previously seemed to get "stuck" on a background refetch and this key trick was added to fix it, re-test without it first — `MRT_TableBodyCellValue`'s own `isLoading`/`showSkeletons` subscription should already handle that case on its own.
+
+### Eager "load everything" pagination costs one full re-render per page, by design
+
+If your data source grows one array across several sequential fetches (e.g. `useInfiniteQuery` plus a loop that calls `fetchNextPage()` repeatedly until everything is loaded) and passes that growing array as `data`, expect a full row-model reconstruction — and a full re-render of every hand-built row and cell — each time a new page lands. This isn't a bug to chase in this library: TanStack Table's row model memoizes strictly on the `data` array's reference, so a freshly-flattened array (a new reference every time, even if most of its contents are unchanged) means a fresh row model every time, regardless of how finely anything downstream subscribes. It's most visible exactly where you'd expect it — a burst of jank while several pages load back-to-back right after a table/dialog first opens, settling once loading finishes. If that's visible enough to matter, the fix is upstream of this library, in your own data-loading code: don't eagerly load every page up front, or page normally and only fetch what's currently needed.
 
 ## Anything not covered here
 
